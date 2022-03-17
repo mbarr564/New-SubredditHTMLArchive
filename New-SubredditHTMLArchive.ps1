@@ -42,7 +42,7 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Thursday, March 17, 2022 3:17:32 PM
+    Last update: Thursday, March 17, 2022 4:12:07 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
@@ -51,6 +51,7 @@ param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$
 [string]$taskName = 'RunOnce' #slash characters in this string bad
 [string]$scriptName = ((Split-Path $PSCommandPath -Leaf) -replace ".ps1",'')
 [string]$rootFolder = "$($env:USERPROFILE)\Documents\$scriptName" #the leaf folder may not exist yet, but will be created.. parent folder must exist
+[string]$zipOutputPath = "$rootFolder\ZIP\$(Get-Date -f yyyy-MM-dd_HHmmss)"
 [string]$transcriptPath = "$rootFolder\logs\$($scriptName)_$($taskName)_transcript_-_$(Get-Date -f yyyy-MM-dd).txt"
 Get-ChildItem "$rootFolder\logs" | Where-Object {$_.Name -like "*.1"} | ForEach-Object {Remove-Item -LiteralPath "$($_.FullName)" -ErrorAction SilentlyContinue} #clean empty log files with extension .1
 if (([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){$isAdmin = '[ADMIN] '} else {$isAdmin = ''} #is this instance running as admin, string presence used as boolean
@@ -59,14 +60,11 @@ if (([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::
 if ($Background){$logonType = 'S4U'} else {$logonType = 'Interactive'} #default Interactive (for viewable console window), -Background for S4U (non-interactive task). Not supported: Password (not tested), InteractiveOrPassword (not tested), Group (no profile), ServiceAccount (no profile), None (no profile)
 foreach ($folderName in @('JSON','HTML','ZIP','logs')){if (-not(Test-Path "$rootFolder\$folderName" -PathType Container)){New-Item -Path "$rootFolder\$folderName" -ItemType Directory -Force -ErrorAction Stop | Out-Null}}
 if (-not(Test-Path (Split-Path $rootFolder -Parent) -PathType Container)){throw "Error: root output path doesn't exist or not a directory: $(Split-Path $rootFolder -Parent)"}
-if ($InstallPackages -and (-not($Subreddit -and $Subreddits))){throw "Error: the -InstallPackages parameter cannot be supplied by iteself!"}
-if ($InstallPackages -and $Background){throw "Error: the -InstallPackages parameter cannot be used in conjunction with the -Background parameter!"}
-if ($Subreddit -and $Background){throw "Error: the -Background parameter cannot be used for single subreddit archival!"}
+if ($InstallPackages -and $Background){throw "Error: the -InstallPackages parameter cannot be used in conjunction with the -Background parameter! Use the -InstallPackages switch by itself first, then use the -Background switch on the next script run."}
+if ($Subreddit -and $Background){throw "Error: the -Background parameter cannot be used for single subreddit archival! Time for a single subreddit is 1-3 hours for a maximum of 1000 records."}
 if ($Subreddits)
 {
-    [string[]]$badNames = @()
-    $Subreddits = $Subreddits | Select-Object -Unique
-    $Subreddits | ForEach-Object {if ($_ -notmatch "^[A-Z0-9_]{2,21}$"){$badNames += $_}}
+    [string[]]$badNames = @(); $Subreddits = $Subreddits | Select-Object -Unique; $Subreddits | ForEach-Object {if ($_ -notmatch "^[A-Z0-9_]{2,21}$"){$badNames += $_}}
     if ($badNames.count -gt 0){throw "Error: Subreddit name(s) failed regex validation: $($badNames -join ', ')"}
     [int]$hoursToArchiveAll = (120 * ($Subreddits.count)) / 60 #from experience BDFR usually takes 1-3hrs to finish pulling down the API maximum of 1000 records, per subreddit.. so 120 minutes
     if ($hoursToArchiveAll -gt 24){$timeToArchiveAll = "over $($hoursToArchiveAll / 24) full day(s)"} else {$timeToArchiveAll = "$hoursToArchiveAll hours"}
@@ -105,23 +103,20 @@ if (-not((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -a
         Force = $true} #force overwrite of previous task with same name
     if ($Subreddits){$taskArguments.add('Description',"Subreddits: $($Subreddits -join ', ')    -=-    Transcript folder for background tasks: $rootFolder\logs\")} #linebreaks not supported by the GUI for this field
 
-    ## Register scheduled task and handle access errors
+    ## Register scheduled task, handle access errors, display log and zip paths
     if ($isAdmin){$foreColor = 'Yellow'} else {$foreColor = 'Cyan'}
     Write-Host "$($isAdmin)Creating task 'Task Scheduler Library > $scriptName > $taskName' with '$logonType' logon type ..." -ForegroundColor $foreColor #https://stackoverflow.com/questions/13965997/powershell-set-a-scheduled-task-to-run-when-user-isnt-logged-in
     try {Register-ScheduledTask @taskArguments | Out-Null} #can trigger UAC admin prompt, which will rerun script as admin to create the task, if task creation fails.. the created task will NOT run as admin
     catch [Microsoft.Management.Infrastructure.CimException]{if (-not($isAdmin)){Start-Process 'powershell.exe' -ArgumentList "$($PSCommandPath)$scriptArgs" -Verb RunAs -Wait} else {throw $error[0]}} #access denied.. rerun this script with same args, as admin (will also trigger if overwriting task with S4U LogonType)
     catch {throw $error[0]} #S4U type will trigger UAC admin prompt to create the task.. or.. user can create as Interactive, and manually change the 'Security options' to 'Run whether user is logged on or not', which does NOT trigger a UAC prompt.
-    if (Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)})
-    {
-        if ($Background -and (-not($isAdmin))){Write-Host "Transcript logging for successfully spawned Task Scheduler background task (taskschd.msc):`n$transcriptPath" -ForegroundColor Cyan}
-    }
+    if (Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}){if ($Background -and (-not($isAdmin))){Write-Host "Transcript logging for successfully spawned Task Scheduler background task (taskschd.msc):`n$transcriptPath`nZIP archive output path:`n$zipOutputPath" -ForegroundColor Cyan}}
     else {throw "Error: failed to create scheduled task!"}
-    if ($isAdmin){Start-Sleep -Seconds 2} #if running as admin, pause a moment so the user can see the administrator console output
+    if ($isAdmin){Start-Sleep -Seconds 1} #if running as admin, pause a moment so the user can see the administrator console output
     exit
 }
 else
 {
-    ## Script already running as scheduled task.. is this instance the task?
+    ## This script is already running as scheduled task.. is this instance the task?
     [datetime]$taskLastRunTime = (((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}) | Get-ScheduledTaskInfo).LastRunTime)
     [datetime]$taskTriggerTime = ((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}).Triggers.StartBoundary)
     if (($taskLastRunTime -lt ((Get-Date).AddSeconds(-45))) -or ($taskTriggerTime -lt ((Get-Date).AddSeconds(-5)))) #for reasons unknown, the spawned task's LastRunTime is about 30 seconds before the task was even created..
@@ -132,7 +127,7 @@ else
         exit #exit so any background process is not interrupted
     }
 
-    ## Transcript start / Interactive console rename and resize attempt
+    ## This instance IS the task (no exit above): Transcript start / Interactive console rename and resize attempt
     if (-not($Background))
     {
         Write-Host "Task running under interactive logon type, updating title and resizing console window ..." -ForegroundColor Cyan
@@ -411,7 +406,6 @@ else
 {
     ## Multiple subreddits
     Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Completed all subreddit HTML archives!"
-    [string]$zipOutputPath = "$rootFolder\ZIP\$(Get-Date -f yyyy-MM-dd_HHmmss)"
     Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Copying all HTML archive folders into ZIP prep folder ..."
     foreach ($Sub in $Subreddits)
     {
@@ -446,7 +440,7 @@ else
 
     ## Compress ZIP & Open output
     Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Compressing everything into a ZIP archive ..."
-    Compress-Archive -Path "$zipOutputPath\*" -Destination "$zipOutputPath\$($Subreddits.count)_indexed_subreddit_clones_$(Get-Date -f yyyy-MM-dd).zip"
+    Compress-Archive -Path "$zipOutputPath\*" -Destination "$zipOutputPath\indexed_HTML_archive_of_$($Subreddits.count)_subreddits_$(Get-Date -f yyyy-MM-dd).zip"
     Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Finished! Time elapsed: $(($timeElapsed.TotalHours).ToString("###.##")) hours"
     if (-not($Background)){Start-Process $zipOutputPath}
 }
@@ -454,8 +448,8 @@ else
 # SIG # Begin signature block
 # MIIVpAYJKoZIhvcNAQcCoIIVlTCCFZECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU54+l1LLntKiGw3j6Zj/8xHkW
-# L4OgghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUzF1ER38J6wXX7YocYUY4ND2+
+# 4Q6gghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -556,16 +550,16 @@ else
 # U2lnbmluZyBDQSBSMzYCEFXW/fyTR4LO3Cqs0hOoVDAwCQYFKw4DAhoFAKB4MBgG
 # CisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcC
 # AQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYE
-# FL+FuOaL2GZ4/uLVkqhjMFDMpZbTMA0GCSqGSIb3DQEBAQUABIICAGY6w02A+jF1
-# 2qmFNeEdCk0KqBIMuyMRHpjmsrcFkr0VMyoxg/Ir+fnDwz1Xu7C/QFnhDQNsZP0O
-# cctlPdLyk2AEByBaZBC5VUuqlVX+4HOG7FzvSSx0rh3PziSIb7HjxsRa279Sn2cw
-# 9r+lBGEWMGojV3LABJPUyK6hXq4aaoYg00NOJ8QIc1bgOba2MQSrC9w/h9TlbPzC
-# k4qL1xt0pot8391oSd6qZLovUzDPHDObI3xZlEFeVajIZ8IrR9208y1VY01OLnQJ
-# iTsMJ4NlbNx7iRU4IAoc9/CBTJiqfMsv3fjQPlCJUXFkqeUSCqZ1W5b4KzfnQEsV
-# 1YVV6LUjZuYkwLAUnPpBpJu0FWiO0HZh9F5YxP52hY4DnSx7eVXuLycKybh4htOh
-# Gh1lG0trSseRiV+ER3A3jAuBnWMG1BLiKBBgjsJWZWwaE1jLaUE3wPbP1KfyLnuP
-# x9RGuGOc9NE35FDbmFBLJnu+dSC76XJaP9Ejz80Y67MyfsiReIDQi47y6WLnPYJA
-# n75T2UHqhyQVoX9CpbR+Hn46lxTbaQyBeAX/5EOu2T1Era4283bCzgDMPkdYKAAX
-# 0JXlcBUhCLTZCbsNXY3xu/72pH2+QVpIfB+Iwcno0NpWW6BZwPDPPNJIhYOtDM9f
-# Sw+lqpekMpcFfk8S7zEY8IrZKbYrEywf
+# FApskPNQzvjsxU9AHeQDtSWKv+c3MA0GCSqGSIb3DQEBAQUABIICAFp6e8Wl1JMn
+# iAoZEIQfXiXBu4bPI4rXOaDaiNopSfrMuhi5NVG49TI+2GPvR7Z3MJIl9QCbe88l
+# wk3poENkfRprc2zhPo+TIm0CE9/m45HFRPf/12oJvOO3IkNyL8Dnf+dJWPe1YB9v
+# GXC6xonbqcPqrfIMpLOH28U6BQxxP5EtjPoOrz8AyOu2Z8ae/VDNge0a93kRs9bj
+# sx2GvyUtDF6+fpcjPLjCEUrxxyPQAZMxWNJWoyACuWOwWJlDyRZpORC0v0b/GYzm
+# oeVUtnJBmTru+yxOdbqml7gbG9mMrw3JntpfPRO+UFWQfV0fRW3wpOhROWUSZWZd
+# R+HgJS1a9A5iiBaoHLeEo5L3Ki+TsSjlq0YCiLJ6DTMsyojPyKj1MHFI9jKbkgKN
+# 4t/kbhd0FvRPZzhxt9GXie/3iPbQZUnvKLlQK12AdB2yJComFRHc2UVsUX0SZH4I
+# dAeRmIriN5kfoJKtChVWyq8qNZL6MME7KuAAxurbKKoqTQkvRWoNazY28k4i86kP
+# Nv+RU7tZ+aVGR0ASdSSbOqdhRjp8Ucp2l/B+81mbwJ2tO/PN5bWFrMMY50uOk8DZ
+# GwoP0YS7Um6bczeRK0mYo+TGdBytaM9g0S59I0EplThn/Hd3RTgBnehwsCPRD87t
+# 0P9IuvOrToJG5cF9M97aGsUslUc67PXT
 # SIG # End signature block
