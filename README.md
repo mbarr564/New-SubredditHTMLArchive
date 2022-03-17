@@ -1,5 +1,5 @@
 ## Usage  
-1) PS> Invoke-WebRequest -URI https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/master/New-SubredditHTMLArchive.ps1 -OutFile .\New-SubredditHTMLArchive.ps1  
+1) PS> Invoke-WebRequest -URI https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/New-SubredditHTMLArchive.ps1 -OutFile .\New-SubredditHTMLArchive.ps1  
 2) PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python' -InstallPackages  
   
 ## Screenshots  
