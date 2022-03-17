@@ -1,5 +1,18 @@
-# New-SubredditHTMLArchive
-Windows turnkey wrapper for BDFR and BDFR-HTML Python modules. Installs prerequisites and uses modules to create offline HTML archives of subreddit posts and comments.
+Two step script usage:
+1) PS> Invoke-WebRequest -URI https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/master/New-SubredditHTMLArchive.ps1 -OutFile .\New-SubredditHTMLArchive.ps1
+2) PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python' -InstallPackages
+
+The script will run and make itself into a task called 'RunOnce' in Task Scheduler (taskschd.msc):
+
+![Task Manager Screenshot](screenshotTaskManager.png "Task Manager Screenshot")
+
+Then seconds later, that created task will run, and pop up an interactive PowerShell console:
+
+![Interactive Screenshot](screenshotScript.png "Interactive Screenshot")
+
+If you run the script with the -Background parameter supplied, you will instead see the path to the transcript log:
+
+![Background Task Screenshot](screenshotBackground.png "Background Task Screenshot")
 
 Added features since initial release:
 - Missing dependency package installation with the new -InstallPackages parameter.
