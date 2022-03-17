@@ -15,7 +15,7 @@ If you run the script with the -Background parameter supplied, you will instead 
   
 ![Background Task Screenshot](screenshotBackground.png "Background Task Screenshot")
   
-## Added Features  
+## Added Features Since Initial Release  
 - Missing dependency package installation with the new -InstallPackages parameter.
     1. Outputs list of installed Python modules, and does prerequisite checks for winget.
 - Support for arrays of subreddit names with the new -Subreddits parameter.

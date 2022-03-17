@@ -42,7 +42,7 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Thursday, March 17, 2022 1:54:54 PM
+    Last update: Thursday, March 17, 2022 2:20:41 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
