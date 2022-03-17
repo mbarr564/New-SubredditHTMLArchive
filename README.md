@@ -4,12 +4,15 @@
   
 ## Screenshots  
 The script will run and make itself into a task called 'RunOnce' in Task Scheduler (taskschd.msc):  
+  
 ![Task Manager Screenshot](screenshotTaskManager.png "Task Manager Screenshot")
   
-Then seconds later, that created task will run, and by default will pop up an interactive console:
+Then seconds later, that created task will run, and by default will pop up an interactive console:  
+  
 ![Interactive Screenshot](screenshotScript.png "Interactive Screenshot")
   
 If you run the script with the -Background parameter supplied, you will instead see the path to the transcript log:  
+  
 ![Background Task Screenshot](screenshotBackground.png "Background Task Screenshot")
   
 ## Added Features  
