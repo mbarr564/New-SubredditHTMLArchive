@@ -42,7 +42,7 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Thursday, March 17, 2022 4:22:21 PM
+    Last update: Thursday, March 17, 2022 4:37:18 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
@@ -112,6 +112,7 @@ if (-not((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -a
     if (Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}){if ($Background -and (-not($isAdmin))){Write-Host "Transcript logging for successfully spawned Task Scheduler background task (taskschd.msc):`n$transcriptPath`nFinished ZIP archive output path: $zipOutputPath" -ForegroundColor Cyan}}
     else {throw "Error: failed to create scheduled task!"}
     if ($isAdmin){Start-Sleep -Seconds 1} #if running as admin, pause a moment so the user can see the administrator console output
+    elseif (-not(Test-Path "$zipOutputPath" -PathType Container)){New-Item -Path "$zipOutputPath" -ItemType Directory -Force -ErrorAction Stop | Out-Null} #create ZIP output folder right away so user can open it in file explorer
     exit
 }
 else
@@ -448,8 +449,8 @@ else
 # SIG # Begin signature block
 # MIIVpAYJKoZIhvcNAQcCoIIVlTCCFZECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUSuAJBkf/rv5DovKPWEGFXia2
-# XZegghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUeGy83gPISh16VIJ+k2K8SdXA
+# yvCgghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -550,16 +551,16 @@ else
 # U2lnbmluZyBDQSBSMzYCEFXW/fyTR4LO3Cqs0hOoVDAwCQYFKw4DAhoFAKB4MBgG
 # CisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcC
 # AQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYE
-# FJBuE7XHc0aGQpaIPSH0jQZp9Ry4MA0GCSqGSIb3DQEBAQUABIICAAL+gvJOogaX
-# 3QtJHeRS6YqimeAmj/ZlpcplnPSkVIpFAwXYv6kr/ZTAOogCHA+xEtVbjhg3hZ60
-# cFQbgNPcitUw4cK9H33wD9PmLHD8oAvRLcHaCmHfWfDq2l4Psrl+u8qjYGLM8CLk
-# U8GUVgh8vfGoDabMLbdWIZgouqhlKm2Uzedbn/xRfkSEBGxht7//GHGfRPMtrQ28
-# tauhj3ZJnCqlpgl5mIq4bMNE/YovF4RbQhld2lk8KkB7CYFkgRmEUieBwqsRMmg1
-# EknNTHDHwmUm+e6LAO4sVxnw44tj7rjKlV23YzhC5q77ovyJeEUVCUx0nk2uMwcs
-# QaWGHFIkPLhDC0rj90cc9FPAqe89Ura2F25JeFDYRhA4UBmjjoZMeTa4Jvg5qnXY
-# GHY/7D9epvIYzvM+joXcCP98kMeK36qndqE2Eqp1pRmQu113nfuSbTMsdRdNHW3A
-# 3mK8mDopO0WYbAHb7/RTtpYMa6MJzTdnKivvw1zXVY/F7SFCl7Eykd6sbZrMaF1a
-# p30whEiteeESHGlpQZhh1elfdT0t7Ri1d1iw0xjtwX+xF7HdowMmOuRa2h5rqZ39
-# sgf1Cvm3ptgDm065CyBg15jR6H89UVIjYimmHDDqtxtxWABylJlmMdlLQurX9Y2X
-# ULVTzVN4eV4g2GuYAJTiTMA+AzSRHKJh
+# FDYKc5daoG/g6JbRFemSi6JlR3PvMA0GCSqGSIb3DQEBAQUABIICAEuwPlcOQ8Gr
+# 5fLo/y32hdOBS1s5iBFaolTykGcXVlN4PTU1y1uyae9uEnNOyByt8JL0g3lXq2YD
+# /p94g2KpfrLkB5NFml8XvvrS4cTK1oelNmFJ8TacSi4Cn4ZfaPOnh5JpqVIa/Z0k
+# 5z4kSrIIvSP2K5P5nT2RVBJTgwVkr6WEUYOLneqIw7ETYRgTffycixg8IfL040Su
+# DSQiAF4TX+UXaWCyOslKYn63bhdsf18FYaB+nEE7IyZBdNErhR4Wm4rIWd6/107o
+# J6CsPbxGBkhjBEd8XSj93ZXLRhg/wBgWWpW3KoztZ57SB+h01MlzCJ9yPG5swxut
+# o4kA1L31DTB1IUq+oTAF475+eM5q1nBitP9+JmK4KHO+ddIch4h8zaio4HoK9DzA
+# khuD9xd8HRrvwGMXQwvYo9g/63//WPOJZ9XI6PSs9uFtStDyzQu0nTTzyx2l3G/h
+# tikszNuhsUz++ukCZr2rzCBMMm8gLk6LXZ4mhl3xhzTTzTS7X2RI0TiEwmq8asSd
+# EyF9+Zz0NX5Hl5+RqelgmAz7Dv67vh3HxyqeYVGousaY/NnXdNe+EOzAhEzSvvhO
+# NevhvRThOZaE38n1TV1CBiFoCCuuUlpHhKA0upamFMwEDYqREd8qosYFexdFEzf2
+# sQShAAz2GNLvdggVhoaTyUpbyf19l1jl
 # SIG # End signature block
