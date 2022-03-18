@@ -42,7 +42,7 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Thursday, March 17, 2022 5:45:27 PM
+    Last update: Thursday, March 17, 2022 8:05:35 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
@@ -58,8 +58,8 @@ if (([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::
 
 ## Custom parameter validation
 if ($Background){$logonType = 'S4U'} else {$logonType = 'Interactive'} #default Interactive (for viewable console window), -Background for S4U (non-interactive task). Not supported: Password (not tested), InteractiveOrPassword (not tested), Group (no profile), ServiceAccount (no profile), None (no profile)
-foreach ($folderName in @('JSON','HTML','ZIP','logs')){if (-not(Test-Path "$rootFolder\$folderName" -PathType Container)){New-Item -Path "$rootFolder\$folderName" -ItemType Directory -Force -ErrorAction Stop | Out-Null}}
 if (-not(Test-Path (Split-Path $rootFolder -Parent) -PathType Container)){throw "Error: root output path doesn't exist or not a directory: $(Split-Path $rootFolder -Parent)"}
+foreach ($folderName in @('JSON','HTML','ZIP','logs')){if (-not(Test-Path "$rootFolder\$folderName" -PathType Container)){New-Item -Path "$rootFolder\$folderName" -ItemType Directory -Force -ErrorAction Stop | Out-Null}}
 if ($InstallPackages -and $Background){throw "Error: the -InstallPackages parameter cannot be used in conjunction with the -Background parameter! Use the -InstallPackages switch by itself first, then use the -Background switch on the next script run."}
 if ($Subreddit -and $Background){throw "Error: the -Background parameter cannot be used for single subreddit archival! Time for a single subreddit is 1-3 hours for a maximum of 1000 records."}
 if ($Subreddits)
@@ -118,7 +118,7 @@ else
 {
     ## This script is already running as scheduled task.. is this instance the task?
     [datetime]$taskLastRunTime = (((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}) | Get-ScheduledTaskInfo).LastRunTime)
-    [datetime]$taskTriggerTime = ((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}).Triggers.StartBoundary)
+    [datetime]$taskTriggerTime = ((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}).Triggers.StartBoundary) #this won't work if user reruns task later, but will if they set a new trigger.. added because LastRunTime wasn't being reliable
     if (($taskLastRunTime -lt ((Get-Date).AddSeconds(-45))) -or ($taskTriggerTime -lt ((Get-Date).AddSeconds(-5)))) #for reasons unknown, the spawned task's LastRunTime is about 30 seconds before the task was even created..
     {
         Write-Warning "Detected running script task! Last run: $($taskLastRunTime). First run: $($taskTriggerTime). Exiting ..."
@@ -127,9 +127,10 @@ else
         exit #exit so any background process is not interrupted
     }
 
-    ## This instance IS the task (no exit above): Transcript start / Interactive console rename and resize attempt
+    ## This instance IS the task (no exit above)
     if (-not($Background))
     {
+        ## Interactive console rename and resize attempt
         Write-Host "Task running under interactive logon type, updating title and resizing console window ..." -ForegroundColor Cyan
         Write-Output "`n`0`n`0`n`0`n" #skip lines (with new lines and nulls) so the progress banner doesn't cover interactive console output
         $host.UI.RawUI.WindowTitle = "Windows PowerShell - Task Scheduler > Task Scheduler Library > $scriptName > RunOnce" #based on size 16 Consolas font (right-click powershell.exe window title > properties > Font tab)
@@ -138,6 +139,7 @@ else
     }
     else
     {
+        ## Background Task: Start Transcript
         Start-Transcript -LiteralPath $transcriptPath -Append -ErrorAction Stop | Out-Null #only start log once script is running as a task, and as a background task
         if (-not(Test-Path "$zipOutputPath" -PathType Container)){New-Item -Path "$zipOutputPath" -ItemType Directory -Force -ErrorAction Stop | Out-Null} #create ZIP output folder right away so user can open it in file explorer
     }
@@ -156,10 +158,7 @@ if ($missingExes.count -gt 0)
         [string]$OSName = ((Get-WmiObject -class Win32_OperatingSystem).Caption); [int]$OSBuild = [System.Environment]::OSVersion.Version.Build
         if ($OSBuild -lt 17763){throw "Error: this Windows OS build ($OSBuild) is older than build 17763, which is required for winget!"} #check that Windows version is new enough to support winget: https://github.com/microsoft/winget-cli#installing-the-client
         if (((Get-CimInstance -ClassName Win32_OperatingSystem).ProductType) -ne 1){throw "Error: this Windows OS is not a client/workstation edition, which is required for winget!"} #check that Windows is a client OS and not Server editions
-        if (-not(Get-Command 'winget.exe' -ErrorAction SilentlyContinue)){
-            switch -regex ($OSName){
-                'Windows 10' {Start-Process 'https://www.microsoft.com/en-us/p/app-installer/9nblggh4nns1'; throw "Error: not found: winget.exe. Opened winget install link for Windows 10 in your default browser. Rerun script after install."}
-                'Windows 11' {throw "Error: not found: winget.exe. This should be included with Windows 11."}}}
+        if ((-not(Get-Command 'winget.exe' -ErrorAction SilentlyContinue)) -and ($OSName -like "*Windows 10*")){Start-Process 'https://www.microsoft.com/en-us/p/app-installer/9nblggh4nns1'; throw "Error: not found: winget.exe. Opened winget install link for Windows 10 in your default browser. Rerun script after install."}
         try {winget list | Out-Null} catch {throw "Error: running 'winget list' threw an exception:`n" + $error[0]} #trigger prompt to agree to the MS Store agreement terms (press Y, then Enter)
         Write-Host "[$(Get-Date -f HH:mm:ss.fff)] Installing latest releases for: $($missingExes -join ', ') ..." -ForegroundColor Cyan
         switch ($missingExes){
@@ -452,8 +451,8 @@ else
 # SIG # Begin signature block
 # MIIVpAYJKoZIhvcNAQcCoIIVlTCCFZECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU/O2cxPGHu3UzCEw8SKwDWddj
-# 0TOgghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUneUMc2g5+MYB6uYOWMxBKuUG
+# tMqgghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -554,16 +553,16 @@ else
 # U2lnbmluZyBDQSBSMzYCEFXW/fyTR4LO3Cqs0hOoVDAwCQYFKw4DAhoFAKB4MBgG
 # CisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcC
 # AQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYE
-# FOyh8CZxldZxL9Yv3Sp+38HIM28tMA0GCSqGSIb3DQEBAQUABIICAIbG3NqPatRX
-# Mce5hQrnxHfifrpCwAaKjIHv5r+rb6kRBn8Hh3bxY/HFMy6sit1RPndtCjVYrR0i
-# SODmS7dkKlCdN4Im+vdRJnTHnog6wpc6BBKRStGhOdX0V8a3pwIxKoswJoWNTMxO
-# O0B6vNGqSiusLEodjXKMwPLZBeNfCnnEP1iGct48DpKd5MWNQfknKMD8q+r0DooN
-# mGqiMUPmEPKM6E/mqBnBQQakf6RLG4juVKCj+i8UMnd89w4ZHv3HEeOSUOZXFw61
-# 6zx6u6orjx0IwRKxsh5gVDfCiA9+FojQepQ6luEAOIdDR9M0r03xCPaF7xpULqD6
-# lZjOgDafRgX6iPuWgM0C7OGTvS6lBd/LBa3oTZqweqHHhPeib62KsuFxf8W5fJ26
-# PByPNNwAGs0tROn1eTVturQQ4AzdScJAR+/e0SuKTGkyB9f7V2CE3l4fDBqjGBt3
-# Yz+mUnkisp+4Wlf6a1GlaTsf9bkBjwIb2A/YduwK4PTNG9aW5SLrDZgFVA3OjFiX
-# bA37FbX6eicG3aeplrYK75TGWU87WvejyCV8+kcsLdYg8x6Xkl6eBsS6fMjCZtCl
-# +MTjGWOt2qxgkzsBpmOq7gJpu4yA0uJfCuDmVA4ZfSDUpaK91iJ28fuEp4fECirq
-# /yEGQJ4H4jtnAs6m93xaPXHggR90myDA
+# FODyvZ6faEA0nAlQWquXwwGlxbx1MA0GCSqGSIb3DQEBAQUABIICAE+r7WaChwFS
+# hGdODJnV0OC0ST0vEWmwhUBr3/eqBfc6b1+fOpBFM2+7RkSuJjOJqMZ8A616rZFS
+# c/vBwJy8T8kOhMif/K+FuCLvEShtNORXqPUw1m6TU60msATM8xyGcgy4x0yjuxOs
+# hLroHPBp35kW7vVi5xGXnYwmHI2qmx5bpVzaznoxTI+xMbhvzZKPSzi7rTLcuyP1
+# WFFNX5qFJvervkeLWLSs9gbekGyOC9d4LPe0Qysap7AS9vG3eHxTq6Hx69S30icf
+# La3kRwLscEdN36jcgG0m4LcnZ5dFUDfT3I0mZ0nRUuuhwW+lWIxS5WR+lLWxKHF0
+# 8NYR2PlpZ3UNsoRXeUKdeFxkfVa+pd3ae0DjXOkfuXiVwPn1gqZVCKDYhzkcD+dO
+# i6Dy1+zLGJbhPnp1vs/qV5JR5j8W3V0OyUXSvLVGcGipsCPR5rpzhXUVbLelQYjT
+# kKWlu6ixtHOSqO5IyiSktyOlwJSHmfftkjdxV/xiSs/t+D4rUUPtvRiQRYvuoX94
+# VMxnhxdAA+vKu6p8WGyG+Cf+PDVEhvGMl2WKGUTVPtpvitkC9i+MmZrwERWkyTyE
+# yJI846svum1Wxpbbz3PxawejtYmKCQW40Ip+l23YFIwW8g+G20e/57YAZTmio+Cf
+# Ingp0vcbx6lO6K7/f6CFuHsEnzP088X9
 # SIG # End signature block
