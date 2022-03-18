@@ -30,5 +30,5 @@ If you run the script with the -Background switch parameter supplied, you will i
 - Added -Background parameter to set spawned task LogonType to S4U (with no stored password).
   
 Initial single subreddit release: [/previous_versions/New-SubredditHTMLArchive.v1.0.ps1](./previous_versions/New-SubredditHTMLArchive.v1.0.ps1)  
-First multi subreddit release: [/previous_versions/New-SubredditHTMLArchive.v1.5.ps1](./previous_versions/New-SubredditHTMLArchive.v1.5.ps1)
+First multi subreddit release: [/previous_versions/New-SubredditHTMLArchive.v1.5.ps1](./previous_versions/New-SubredditHTMLArchive.v1.5.ps1)  
 Last non-scheduled task release: [/previous_versions/New-SubredditHTMLArchive.v1.6.ps1](./previous_versions/New-SubredditHTMLArchive.v1.6.ps1)
