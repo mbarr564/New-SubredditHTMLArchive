@@ -28,6 +28,6 @@ If you run the script with the -Background switch parameter supplied, you will i
 - Added CTRL+C handling: once restarts clone, twice exits script. Added loop hang detection.
 - Script spawns itself as a scheduled task, enabling S4U background runs, and rerun scheduling.
 - Added -Background parameter to set spawned task LogonType to S4U (with no stored password).
-
-Initial single subreddit release: [/previous_versions/New-SubredditHTMLArchive.v1.0.ps1](./previous_versions/New-SubredditHTMLArchive.v1.0.ps1)
+  
+Initial single subreddit release: [/previous_versions/New-SubredditHTMLArchive.v1.0.ps1](./previous_versions/New-SubredditHTMLArchive.v1.0.ps1)  
 First multi subreddit release: [/previous_versions/New-SubredditHTMLArchive.v1.5.ps1](./previous_versions/New-SubredditHTMLArchive.v1.5.ps1)
