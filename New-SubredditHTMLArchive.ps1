@@ -42,7 +42,7 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Thursday, March 17, 2022 5:18:21 PM
+    Last update: Thursday, March 17, 2022 5:45:27 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
@@ -112,7 +112,6 @@ if (-not((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -a
     if (Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}){if ($Background -and (-not($isAdmin))){Write-Host "Transcript logging for successfully spawned Task Scheduler background task (taskschd.msc):`n$transcriptPath`nFinished ZIP archive output path: $zipOutputPath" -ForegroundColor Cyan}}
     else {throw "Error: failed to create scheduled task!"}
     if ($isAdmin){Start-Sleep -Seconds 1} #if running as admin, pause a moment so the user can see the administrator console output
-    elseif (-not(Test-Path "$zipOutputPath" -PathType Container)){New-Item -Path "$zipOutputPath" -ItemType Directory -Force -ErrorAction Stop | Out-Null} #create ZIP output folder right away so user can open it in file explorer
     exit
 }
 else
@@ -137,7 +136,11 @@ else
         if ($host.UI.RawUI.MaxPhysicalWindowSize.Width -ge 174){try {$host.UI.RawUI.BufferSize = New-Object -TypeName System.Management.Automation.Host.Size -ArgumentList 174, 9001} catch {}} #have to set buffer first, and then window size
         if ($host.UI.RawUI.MaxPhysicalWindowSize.Width -ge 174){try {$host.UI.RawUI.WindowSize = New-Object -TypeName System.Management.Automation.Host.Size -ArgumentList 174, 30} catch {}} #174 is max width on 1080p displays -- no wrapping with longest subreddit names
     }
-    else {Start-Transcript -LiteralPath $transcriptPath -Append -ErrorAction Stop | Out-Null} #only start log once script is running as a task, and as a background task
+    else
+    {
+        Start-Transcript -LiteralPath $transcriptPath -Append -ErrorAction Stop | Out-Null #only start log once script is running as a task, and as a background task
+        if (-not(Test-Path "$zipOutputPath" -PathType Container)){New-Item -Path "$zipOutputPath" -ItemType Directory -Force -ErrorAction Stop | Out-Null} #create ZIP output folder right away so user can open it in file explorer
+    }
 }
 
 ## Main: Check for command line utilities
@@ -449,8 +452,8 @@ else
 # SIG # Begin signature block
 # MIIVpAYJKoZIhvcNAQcCoIIVlTCCFZECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUpyrywmrUjoVIccTODtc5dl3d
-# Tt+gghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU/O2cxPGHu3UzCEw8SKwDWddj
+# 0TOgghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -551,16 +554,16 @@ else
 # U2lnbmluZyBDQSBSMzYCEFXW/fyTR4LO3Cqs0hOoVDAwCQYFKw4DAhoFAKB4MBgG
 # CisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcC
 # AQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYE
-# FD48sVYTvD1sVCXljGhcyTGDCw6vMA0GCSqGSIb3DQEBAQUABIICAD+Yri/UKEcT
-# Qtr8U1PkDxt/1WK5GanYsU/2/ka6V8a5muBvR0CO6w+qXvuRgW2JA+d8/e8RtGb5
-# XR1Wgy4um1dx6l/x3l/6I/47eooTEOHlxp3w//dp4ubNliJfmA7uC0YrkEpjp6cJ
-# bJ9CxSFbIw++D++hwm0HZ1yrTTXI3mP7hczsYfSm46Ne8Po4DBNDYfQh/6J9z2nV
-# AnV2FbsMnk7jGyxv4gPWWiDAxk7QFJEqBmAZerwzfKyR4s767XlEz6bWWb8RfPwd
-# uk6LD0WF5f9raznBnScIvji2GYODXG5kqQ5sgOMgJMqFiDb8S8uPv5/Re3WxQ1cL
-# XPsFG+vZ3XXeX73djLNtYi15nrTzKgGsaWrTJUucV6elUktE1qlDM3VfFUxnq4JC
-# 1wMlm1HbzaFyQHVn+VfGof1O2r3cg1i/3a7JTP5Be8lkYPgdj9pqPEKJCIXDLt8C
-# 7yJD2GvciuFzYn/6hSVh4y2W4VnQ+PlOSwsqwGthrUdfpyd5RE6AvkYmbtMEzYIp
-# kZWifrQaFIAqYCQLibnioKm8ja1fo8zJkQ/nFB8+kTS1h19sqJcxzX5qQMK+KLe7
-# QdlM7GV2Yad+nk7nqSo+9FbGD33hDxoEQtO+ciJkHiGOzjfoN0O/iZp/LWoKSxl4
-# Z3g9qbVeqiTmoG17syQbHOQcOnaiqQ09
+# FOyh8CZxldZxL9Yv3Sp+38HIM28tMA0GCSqGSIb3DQEBAQUABIICAIbG3NqPatRX
+# Mce5hQrnxHfifrpCwAaKjIHv5r+rb6kRBn8Hh3bxY/HFMy6sit1RPndtCjVYrR0i
+# SODmS7dkKlCdN4Im+vdRJnTHnog6wpc6BBKRStGhOdX0V8a3pwIxKoswJoWNTMxO
+# O0B6vNGqSiusLEodjXKMwPLZBeNfCnnEP1iGct48DpKd5MWNQfknKMD8q+r0DooN
+# mGqiMUPmEPKM6E/mqBnBQQakf6RLG4juVKCj+i8UMnd89w4ZHv3HEeOSUOZXFw61
+# 6zx6u6orjx0IwRKxsh5gVDfCiA9+FojQepQ6luEAOIdDR9M0r03xCPaF7xpULqD6
+# lZjOgDafRgX6iPuWgM0C7OGTvS6lBd/LBa3oTZqweqHHhPeib62KsuFxf8W5fJ26
+# PByPNNwAGs0tROn1eTVturQQ4AzdScJAR+/e0SuKTGkyB9f7V2CE3l4fDBqjGBt3
+# Yz+mUnkisp+4Wlf6a1GlaTsf9bkBjwIb2A/YduwK4PTNG9aW5SLrDZgFVA3OjFiX
+# bA37FbX6eicG3aeplrYK75TGWU87WvejyCV8+kcsLdYg8x6Xkl6eBsS6fMjCZtCl
+# +MTjGWOt2qxgkzsBpmOq7gJpu4yA0uJfCuDmVA4ZfSDUpaK91iJ28fuEp4fECirq
+# /yEGQJ4H4jtnAs6m93xaPXHggR90myDA
 # SIG # End signature block
