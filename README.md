@@ -5,17 +5,17 @@
 ## Screenshots  
 The script will run and make itself into a task called 'RunOnce' in Task Scheduler (taskschd.msc):  
   
-![Task Manager Screenshot](screenshotTaskManager.png "Task Manager Screenshot")
+![Task Manager Screenshot](./screenshots/screenshotTaskManager.png "Task Manager Screenshot")
   
 Then seconds later, that created task will run, and by default will pop up an interactive console:  
   
-![Interactive Screenshot](screenshotScript.png "Interactive Screenshot")
+![Interactive Screenshot](./screenshots/screenshotScript.png "Interactive Screenshot")
   
 If you run the script with the -Background switch parameter supplied, you will instead see the path to the transcript log, and the future finished ZIP file directory:  
   
-![Background Task Screenshot](screenshotBackground.png "Background Task Screenshot")
+![Background Task Screenshot](./screenshots/screenshotBackground.png "Background Task Screenshot")
   
-## Added Features Since Initial Release  
+## Added features since initial release  
 - Missing dependency package installation with the new -InstallPackages parameter.
     1. Outputs list of installed Python modules, and does prerequisite checks for winget.
 - Support for arrays of subreddit names with the new -Subreddits parameter.
@@ -28,3 +28,6 @@ If you run the script with the -Background switch parameter supplied, you will i
 - Added CTRL+C handling: once restarts clone, twice exits script. Added loop hang detection.
 - Script spawns itself as a scheduled task, enabling S4U background runs, and rerun scheduling.
 - Added -Background parameter to set spawned task LogonType to S4U (with no stored password).
+
+Initial single subreddit release: [/previous_versions/New-SubredditHTMLArchive.v1.0.ps1](./previous_versions/New-SubredditHTMLArchive.v1.0.ps1)
+First multi subreddit release: [/previous_versions/New-SubredditHTMLArchive.v1.5.ps1](./previous_versions/New-SubredditHTMLArchive.v1.5.ps1)
