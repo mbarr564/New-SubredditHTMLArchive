@@ -1,7 +1,12 @@
-## Usage  
+## GitHub Example Usage  
 1) PS> Invoke-WebRequest -URI https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/New-SubredditHTMLArchive.ps1 -OutFile .\New-SubredditHTMLArchive.ps1  
 2) PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python' -InstallPackages  
 3) PS> Get-Help .\New-SubredditHTMLArchive.ps1 -Full  
+  
+## PowerShell Gallery Example Usage  
+1) PS> Install-Script -Name New-SubredditHTMLArchive  
+2) PS> New-SubredditHTMLArchive.ps1 -InstallPackages  
+3) PS> New-SubredditHTMLArchive.ps1 -Subreddits 'HackRF','DataHoarder','Onions' -Background  
   
 ## Screenshots  
 The script will run and make itself into a task called 'RunOnce' in Task Scheduler (taskschd.msc):  
