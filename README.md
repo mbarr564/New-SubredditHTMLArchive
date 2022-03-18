@@ -1,6 +1,7 @@
 ## Usage  
 1) PS> Invoke-WebRequest -URI https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/New-SubredditHTMLArchive.ps1 -OutFile .\New-SubredditHTMLArchive.ps1  
 2) PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python' -InstallPackages  
+3) PS> Get-Help .\New-SubredditHTMLArchive.ps1 -Full  
   
 ## Screenshots  
 The script will run and make itself into a task called 'RunOnce' in Task Scheduler (taskschd.msc):  
@@ -26,5 +27,5 @@ If you run the script with the -Background switch parameter supplied, you will i
 - BDFR clone operations are now retried up to 20 times, with cumulative sleep.
 - Added logs folder and cleaned all folder management code.. all logs now retained.
 - Added CTRL+C handling: once restarts clone, twice exits script. Added loop hang detection.
-- Script spawns itself as a scheduled task, enabling S4U background runs, and rerun scheduling.
-- Added -Background parameter to set spawned task LogonType to S4U (with no stored password).
+- Script spawns itself as a scheduled task, enabling background runs and rerun scheduling.
+- Added -Background parameter to set spawned task LogonType to S4U (no stored password).
