@@ -1,4 +1,11 @@
-﻿<#
+﻿<#PSScriptInfo
+.VERSION 2.0.6
+.GUID 3ae5d1f9-f5be-4791-ab41-8a4c9e857e9c
+.AUTHOR mbarr564@protonmail.com
+.PROJECTURI https://github.com/mbarr564/New-SubredditHTMLArchive
+.DESCRIPTION Windows turnkey wrapper for BDFR and BDFR-HTML Python modules. Installs modules, and prerequisites, then creates offline/portable HTML archives of subreddit posts and comments.
+#>
+<#
 .SYNOPSIS
     Checks for (or installs) prerequisites, then uses BDFR and BDFR-HTML Python modules to generate a subreddit HTML archive.
     By default, creates root 'New-SubredditHTMLArchive' output folder and under your %USERPROFILE% ($env:USERPROFILE) Documents folder.
@@ -42,7 +49,7 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Thursday, March 17, 2022 8:05:35 PM
+    Last update: Friday, March 18, 2022 12:52:30 AM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
@@ -82,7 +89,7 @@ if (-not((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -a
 {
     ## Check / create Task Scheduler script name folder
     try {$scheduleObject = (New-Object -ComObject Schedule.Service); $scheduleObject.Connect(); $rootScheduleFolder = $scheduleObject.GetFolder('\')} catch {throw "Error: failed to connect to scheduling service!"}
-    try {[void]$rootScheduleFolder.GetFolder($scriptName)} catch {try {[void]$rootScheduleFolder.CreateFolder($scriptName)} catch {throw "Error: failed to create scheduled tasks folder '$scriptName'!"}} finally {}
+    try {[void]$rootScheduleFolder.GetFolder($scriptName)} catch {try {[void]$rootScheduleFolder.CreateFolder($scriptName)} catch {throw "Error: failed to create scheduled tasks folder '$scriptName'!"}}
     
     ## Build script arguments string
     [string]$scriptArgs = ''
@@ -451,8 +458,8 @@ else
 # SIG # Begin signature block
 # MIIVpAYJKoZIhvcNAQcCoIIVlTCCFZECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUneUMc2g5+MYB6uYOWMxBKuUG
-# tMqgghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUTRIPr4oIAjP61W7IQoSl5fEy
+# RFWgghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -553,16 +560,16 @@ else
 # U2lnbmluZyBDQSBSMzYCEFXW/fyTR4LO3Cqs0hOoVDAwCQYFKw4DAhoFAKB4MBgG
 # CisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcC
 # AQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYE
-# FODyvZ6faEA0nAlQWquXwwGlxbx1MA0GCSqGSIb3DQEBAQUABIICAE+r7WaChwFS
-# hGdODJnV0OC0ST0vEWmwhUBr3/eqBfc6b1+fOpBFM2+7RkSuJjOJqMZ8A616rZFS
-# c/vBwJy8T8kOhMif/K+FuCLvEShtNORXqPUw1m6TU60msATM8xyGcgy4x0yjuxOs
-# hLroHPBp35kW7vVi5xGXnYwmHI2qmx5bpVzaznoxTI+xMbhvzZKPSzi7rTLcuyP1
-# WFFNX5qFJvervkeLWLSs9gbekGyOC9d4LPe0Qysap7AS9vG3eHxTq6Hx69S30icf
-# La3kRwLscEdN36jcgG0m4LcnZ5dFUDfT3I0mZ0nRUuuhwW+lWIxS5WR+lLWxKHF0
-# 8NYR2PlpZ3UNsoRXeUKdeFxkfVa+pd3ae0DjXOkfuXiVwPn1gqZVCKDYhzkcD+dO
-# i6Dy1+zLGJbhPnp1vs/qV5JR5j8W3V0OyUXSvLVGcGipsCPR5rpzhXUVbLelQYjT
-# kKWlu6ixtHOSqO5IyiSktyOlwJSHmfftkjdxV/xiSs/t+D4rUUPtvRiQRYvuoX94
-# VMxnhxdAA+vKu6p8WGyG+Cf+PDVEhvGMl2WKGUTVPtpvitkC9i+MmZrwERWkyTyE
-# yJI846svum1Wxpbbz3PxawejtYmKCQW40Ip+l23YFIwW8g+G20e/57YAZTmio+Cf
-# Ingp0vcbx6lO6K7/f6CFuHsEnzP088X9
+# FOmlxMfemKbYt1BoUfW/ovz44COZMA0GCSqGSIb3DQEBAQUABIICAJKqZpXYS7qe
+# 3dJiw3pGtUsOgi8JDWyGjrGq2byb21116ISF0HddoxZPP4JaDTvy1WU4dCNSaecy
+# 5BxGSOiWPa6Voh1xC7PM/pWlAizfTZkuUyrn9WFmFASLbRR2OAN+Hsz8buD36yKr
+# Qt9lkaWwlHl7D813yziHeeeJ3qgYjEVY1hJSSSmNCg6A3cN4KGf8GP34Q77jpYB/
+# GpGaC5KACz1BYeoSNR7IDzdEkz90B2YYQ9tEBfn43hUc+/IWZwoQLWrlqRBnimNG
+# AEzxu4ktGV42dN684QdCXG4cwlih61+fpq2mXm3Tw7zn7hpUs9qY6kOlKlHNIwsl
+# /YYO4UUZpaJOSvJgqju0gX6HMOBfhYcfLnL75Qx7FAyjjvgNn5hRpvPzZ0AwRzvc
+# TvxEDCTO+O33A9aCm+Djun1/jQF+nYxwXaKUQyHdb4Paf91HqhIc7WI4WAry3CJ0
+# zZJrvrQPrwfM3OM0Ec4oam7wzWW1tYMWKPKTh8WO8rhp50Z6mfWDvBNAlBBjB/p2
+# gDMtiFWkLVfABd1RQ9scZptYLGWPVxto1QUb1vJ7vvO8KJNTmtIfAll7dYB4vRf1
+# H/ujoYSuJzmSbok0QMzHYDmJ99zlc84KICbiiPgZDrMKT127NwacSpBbmEAAfeD6
+# WhPD7d70i9XbW615NitIKYJuY+FKSBAb
 # SIG # End signature block
