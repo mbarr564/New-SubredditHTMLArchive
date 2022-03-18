@@ -11,7 +11,7 @@
 ## Screenshots  
 The script will run and make itself into a task called 'RunOnce' in Task Scheduler (taskschd.msc):  
   
-![Task Manager Screenshot](./screenshots/screenshotTaskManager.png "Task Manager Screenshot")
+![Task Scheduler Screenshot](./screenshots/screenshotTaskScheduler.png "Task Scheduler Screenshot")
   
 Then seconds later, that created task will run, and by default will pop up an interactive console:  
   
