@@ -11,7 +11,7 @@ Then seconds later, that created task will run, and by default will pop up an in
   
 ![Interactive Screenshot](screenshotScript.png "Interactive Screenshot")
   
-If you run the script with the -Background parameter supplied, you will instead see the path to the transcript log:  
+If you run the script with the -Background parameter supplied, you will instead see the path to the transcript log, and the path to the future finished ZIP file:  
   
 ![Background Task Screenshot](screenshotBackground.png "Background Task Screenshot")
   
