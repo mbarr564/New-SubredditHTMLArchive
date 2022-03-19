@@ -1,5 +1,5 @@
 ﻿<#PSScriptInfo
-.VERSION 2.0.8
+.VERSION 2.0.9
 .GUID 3ae5d1f9-f5be-4791-ab41-8a4c9e857e9c
 .AUTHOR mbarr564@protonmail.com
 .PROJECTURI https://github.com/mbarr564/New-SubredditHTMLArchive
@@ -49,7 +49,7 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Friday, March 18, 2022 8:20:47 PM
+    Last update: Saturday, March 19, 2022 12:55:11 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
@@ -104,7 +104,7 @@ if (-not((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -a
         TaskPath = $scriptName
         Trigger = (New-ScheduledTaskTrigger -At ((Get-Date).AddSeconds(3)) -Once)
         Action = (New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "$($PSCommandPath)$scriptArgs") #space before $scriptArgs included already in string build
-        Settings = (New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable)
+        Settings = (New-ScheduledTaskSettingsSet -DisallowDemandStart -ExecutionTimeLimit (New-TimeSpan -Seconds 0)) #must be run with a new trigger datetime, instead of right-clicking the task and choosing run, and PT0S equiv for indefinite/disabled run time
         Principal = (New-ScheduledTaskPrincipal -UserID "$($env:COMPUTERNAME)\$($env:USERNAME)" -LogonType $logonType -RunLevel Limited)
         ErrorAction = 'Stop'
         Force = $true} #force overwrite of previous task with same name
@@ -473,8 +473,8 @@ else
 # SIG # Begin signature block
 # MIIVpAYJKoZIhvcNAQcCoIIVlTCCFZECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUwrR/JNZysP84wRLX9uXHOQub
-# kFOgghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUJehlsCsrbKH+Kcmvq8yNHHZG
+# S6OgghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -575,16 +575,16 @@ else
 # U2lnbmluZyBDQSBSMzYCEFXW/fyTR4LO3Cqs0hOoVDAwCQYFKw4DAhoFAKB4MBgG
 # CisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcC
 # AQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYE
-# FM12IEA/tPDK/JDlw6m57AnpvzIZMA0GCSqGSIb3DQEBAQUABIICABxpELX8fQDn
-# MIJtXCTR1NOjxKNQWy6R69jwPP0kYg6QTON6e7elRhZ4hJnovqp6hxbRItNmLCvV
-# DcCR3dL/XHdEVbEYtqu/7R8NC0UTy1e1XeliCqXytAO6bSFOQeslejKBM1UKLXdK
-# lTIt7JFnstAie3zNpFT89l+F+WITjwQoMys4qgXxp+OwXVjnpH6zX8FdkErlNlx5
-# hbei91iK73GMIQ73bPD0JPUuTGYtZXB4CU2Jv5RJxdO7cpPu+5xxVqw1ZTQ++GV5
-# ZXag/2t83/4l085WXKyHftUH0zmoq+hxhfRQ9vjfvccnB+UpQaFDyHI3tpiYekUy
-# CIo8dxSR5dxlmSEAcdQYuGdWhgT3YKmS5wqH9VDar1MBHpoJuz4sRXVMJR/Zuzp8
-# /SGL0I6j3L5M7Np/E+PMmESmApGUBvJxRkO74op9w1RXnG6aWKiQ87YMq+QeuRN/
-# Jdy38GgzXvevsrXdlHLzDR1fxTEGMXK1GqipbPeUYoZE/Wcph4+mRYHVL3exv064
-# Dr1ZFWceYbSl1sp2Kqgq7YZ/nlH560TmdD83I2/x7BAxmMkL0CN/X1CL/uzzxpqu
-# 4NNSxYb0fXbbXzx++JwS5w2i+Lr563jCuEsILRXCjY3801eDjCOO+4AAQLkbie63
-# kxxwQHlbzZuorvUJLaf1uTiQDWfUQEfa
+# FAgwuupxu5PP7k5CwR9OY2o3ijKhMA0GCSqGSIb3DQEBAQUABIICAIEiEulbcTQV
+# e4dsziao2F7z011+4QL2493FCUuXVKxG0U7C7f8Ah9/4WgW6UEtpOqH97YSb1AaV
+# 9w4sqp/v6nQeFU0gRHcVcjreMQl1ZhB5oJKFbRHCTxaJnjWBnbqVjCuROAzzDQUY
+# N5a3oyeS9X2xYgSLOV08f8a1yODSpYxmzbskaGAWqf/J0PoQWw5srwylp2mjale2
+# +TJV1QnKGWTeUo1hMC7WfggERDNNlVyAt/kC8Cy5nz2k8exLlXyOfJKbphrd7ZBE
+# /ugNVYlsDIQyZ+CBh/Vd1tDJS0b3fb99XOYOJaEhUa0iq7ulAH0Qwaez3vUK4qUG
+# CtTyD9QpxZ8g82+b+SZ4BIqWifLgL/dkT8Np5iD5EypBaH6NL1LMfQL9KXXMyHg6
+# +pxxRlHlvxNEYnRghmHvhcP1pF4G+Cnvz1dm/+1lqrzZY+uVuE8Ac6Rf9Xxb4HPR
+# nG/J+laUGkqrCn+GgiGEaaxTa4eiwmSHS2eB/llgK1L4mx9cvLoYMnocR/maZAA4
+# NF993jN+84st3Cop0VYCgRCQPTwsXopXmBLfc5eoNZ65azxnz05L54sVvmkv5aRl
+# R02YorCBz9eGdn9fpIsCOVPD2uBZcKtX1mvOrhYUnf7bKalWDTYu3VYKrhkwlhHn
+# KfLjVTz1CSA/uTPxUv8gQsX9VOx71IwK
 # SIG # End signature block
