@@ -1,5 +1,5 @@
 ﻿<#PSScriptInfo
-.VERSION 2.0.7
+.VERSION 2.0.8
 .GUID 3ae5d1f9-f5be-4791-ab41-8a4c9e857e9c
 .AUTHOR mbarr564@protonmail.com
 .PROJECTURI https://github.com/mbarr564/New-SubredditHTMLArchive
@@ -49,7 +49,7 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Friday, March 18, 2022 6:44:49 PM
+    Last update: Friday, March 18, 2022 8:20:47 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
@@ -311,24 +311,28 @@ foreach ($Sub in $Subreddits)
         ## Custom CTRL+C handling and timeout detection
         [int]$lastTotalCloneOutputGB = 0 #for hang detection
         [bool]$global:CTRLCUsedOnce = $false; [bool]$global:cloneHangDetected = $false
-        [console]::TreatControlCAsInput = $true #change the default behavior of CTRL+C so that the script can intercept and use it versus just terminating the script: https://blog.sheehans.org/2018/10/27/powershell-taking-control-over-ctrl-c/
-        Start-Sleep -Seconds 1 #sleep for 1 second and then flush the key buffer so any previously pressed keys are discarded and the loop can monitor for the use of CTRL+C. The sleep command ensures the buffer flushes correctly
-        $host.UI.RawUI.FlushInputBuffer() #flush the keyboard buffer (clear previous CTRL+C presses)
+        if (-not($Background)){[console]::TreatControlCAsInput = $true} #change the default behavior of CTRL+C so that the script can intercept and use it versus just terminating the script: https://blog.sheehans.org/2018/10/27/powershell-taking-control-over-ctrl-c/
+        if (-not($Background)){Start-Sleep -Seconds 1} #sleep for 1 second and then flush the key buffer so any previously pressed keys are discarded and the loop can monitor for the use of CTRL+C. The sleep command ensures the buffer flushes correctly
+        if (-not($Background)){$host.UI.RawUI.FlushInputBuffer()} #flush the keyboard buffer (clear previous CTRL+C presses)
         $cloneTimeout = New-TimeSpan -Hours 4 #clone operation will retry after 4 hours elapsed, regardless of process status
         $cloneStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         while (-not($bdfrProcess.HasExited)) #loop while the python BDFR process exists
         {
-            if ($host.UI.RawUI.KeyAvailable -and ($key = $host.UI.RawUI.ReadKey("AllowCtrlC,NoEcho,IncludeKeyUp"))) #if a key was pressed during the loop execution, check to see if it was CTRL+C (aka "3"), and if so exit the script after clearing out any running python processes and setting CTRL+C back to normal
+            if (-not($Background)) #only read host keys if interactive
             {
-                if ([int]$key.Character -eq 3){$global:CTRLCUsedOnce = $true; break} #CTRL+C pressed, exit while loop
-                $host.UI.RawUI.FlushInputBuffer()
+                if ($host.UI.RawUI.KeyAvailable -and ($key = $host.UI.RawUI.ReadKey("AllowCtrlC,NoEcho,IncludeKeyUp"))) #if a key was pressed during the loop execution, check to see if it was CTRL+C (aka "3"), and if so exit the script after clearing out any running python processes and setting CTRL+C back to normal
+                {
+                    if ([int]$key.Character -eq 3){$global:CTRLCUsedOnce = $true; break} #CTRL+C pressed, exit while loop
+                    $host.UI.RawUI.FlushInputBuffer()
+                }
             }
+            else {Start-Sleep -Seconds 5} #if not interactive, we don't need to loop quickly to catch CTRL+C presses
             if ($cloneStopwatch.Elapsed -gt $cloneTimeout)
             {
-                ## Detect if successfully downloading huge media files during the timespan
-                try {[int]$totalCloneOutputGB = ((Get-ChildItem -Path "$rootFolder\JSON\$Sub\" | Measure-Object -Sum -Property Length).Sum / 1GB)} catch {$global:cloneHangDetected = $true; break}
-                if ($totalCloneOutputGB -gt $lastTotalCloneOutputGB)
+                [int]$totalCloneOutputGB = ((Get-ChildItem -Path "$rootFolder\JSON\$Sub\" | Measure-Object -Sum -Property Length).Sum / 1GB)
+                if ($totalCloneOutputGB -gt $lastTotalCloneOutputGB) #timeout reached, but check if successfully downloading huge media files during the timespan
                 {
+                    Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Timeout reached, but timer has been reset: output folder has grown by $($totalCloneOutputGB - $lastTotalCloneOutputGB)GB!"
                     $cloneStopwatch.Restart() #restart stopwatch from 0 to allow another 4 hours
                     [int]$lastTotalCloneOutputGB = $totalCloneOutputGB #continue if output folder size is increasing by > 1GB/4hrs
                 }
@@ -351,9 +355,9 @@ foreach ($Sub in $Subreddits)
                     if ([int]$key.Character -eq 3)
                     {
                         ## CTRL+C pressed twice within 5 sec - end this script
-                        [console]::TreatControlCAsInput = $false; [int]$pythonWaitMilliseconds = 500
-                        Write-Host "`n[$(Get-Date -f HH:mm:ss.fff)][$Sub] CTRL+C pressed twice: waiting up to $($pythonWaitMilliseconds)ms for python process to exit ..." -ForegroundColor Yellow #`n = line feed for the -NoNewLine periods
-                        if (-not($bdfrProcess.WaitForExit($pythonWaitMilliseconds))){throw "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Failed to taskkill python process ID '$($bdfrProcess.ID)'!"}
+                        [console]::TreatControlCAsInput = $false
+                        Write-Host "`n[$(Get-Date -f HH:mm:ss.fff)][$Sub] CTRL+C pressed twice: waiting up to 500ms for python process to exit ..." -ForegroundColor Yellow #`n = line feed for the -NoNewLine periods
+                        if (-not($bdfrProcess.WaitForExit(500))){throw "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Failed to taskkill python process ID '$($bdfrProcess.ID)'!"}
                         exit 1
                     }
                     $host.UI.RawUI.FlushInputBuffer()
@@ -366,7 +370,7 @@ foreach ($Sub in $Subreddits)
         }
 
         ## End function
-        [console]::TreatControlCAsInput = $false
+        if (-not($Background)){[console]::TreatControlCAsInput = $false}
         if ($cloneHangDetected){Start-Process 'taskkill.exe' -ArgumentList "/F /PID $($bdfrProcess.ID)" -WindowStyle Hidden -ErrorAction Stop -Wait}
         if (Get-Process -ID ($bdfrProcess.ID) -ErrorAction SilentlyContinue | Where-Object {$_.Name -eq 'python'})
         {
@@ -469,8 +473,8 @@ else
 # SIG # Begin signature block
 # MIIVpAYJKoZIhvcNAQcCoIIVlTCCFZECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUEj7Dv4YOGnzMrOMa5VqY7Igy
-# jHagghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUwrR/JNZysP84wRLX9uXHOQub
+# kFOgghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -571,16 +575,16 @@ else
 # U2lnbmluZyBDQSBSMzYCEFXW/fyTR4LO3Cqs0hOoVDAwCQYFKw4DAhoFAKB4MBgG
 # CisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcC
 # AQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYE
-# FPdcHrTpAY0qWM2hoitCPj5TYv4UMA0GCSqGSIb3DQEBAQUABIICAD9naSL4Hrjj
-# omcec6MnJGG1QA51xXPbNAnQnGdToJ0B3K44Vu8KeGFIrqtz8YnEANzeSyk0z7HI
-# UiZJ4fUkg90Czi7MmFpBDjVWSZqjXeVCsl5dMfnb4MRhZwYuH53AcXEoTIzwfe6v
-# +NaKzqiNOvHyQMkc0eFxqroyIMj9kE+3gWdeKQjDYm2fjgLg2GUw77pCTs1Acvdr
-# 3AoJyliuFA9W6t7PuDNUQeuqAZUQRr3GIXM8zmOMeUYtIaulrEjQIMFf1WDOUppL
-# 2mxMblx2r2h2WBkNMmRja7DVJtpe6tZ6aVZNaXYOKBhMJ1dzBj21ZHaWcmu+WHTJ
-# 3QqcbVA5K3VKPoUL46jKA05XvD+2l3M4Nh5PUkq/7BzbJsCsnoE0J4pUd3ts6uim
-# TU/wVN6rrYVjW6YEX0HGHJy67M3a1OgO/4OSm00NjRqrUA2oRfYNXgzqYy9poouG
-# O1mydZuTzbm9aOeRWbJB9zTbwmcTYOOwU8jfpe3V8WMdoCy+qr6lQg90dMIYykmC
-# J5mWrNiECrfdblvogGjjb+SbXCalZUOIVXlVy6bAH3jGGgW4kDCm2QLDpYDPentc
-# OCacN+vgHu1ap9H7dWU4bXwMnwMy2v0h0M44nAVy+Z2OKA6GxJmt6HzK5nOgdAFa
-# o7KvWgb3yFViGO7QTYFUdZKi3Oj/VHT3
+# FM12IEA/tPDK/JDlw6m57AnpvzIZMA0GCSqGSIb3DQEBAQUABIICABxpELX8fQDn
+# MIJtXCTR1NOjxKNQWy6R69jwPP0kYg6QTON6e7elRhZ4hJnovqp6hxbRItNmLCvV
+# DcCR3dL/XHdEVbEYtqu/7R8NC0UTy1e1XeliCqXytAO6bSFOQeslejKBM1UKLXdK
+# lTIt7JFnstAie3zNpFT89l+F+WITjwQoMys4qgXxp+OwXVjnpH6zX8FdkErlNlx5
+# hbei91iK73GMIQ73bPD0JPUuTGYtZXB4CU2Jv5RJxdO7cpPu+5xxVqw1ZTQ++GV5
+# ZXag/2t83/4l085WXKyHftUH0zmoq+hxhfRQ9vjfvccnB+UpQaFDyHI3tpiYekUy
+# CIo8dxSR5dxlmSEAcdQYuGdWhgT3YKmS5wqH9VDar1MBHpoJuz4sRXVMJR/Zuzp8
+# /SGL0I6j3L5M7Np/E+PMmESmApGUBvJxRkO74op9w1RXnG6aWKiQ87YMq+QeuRN/
+# Jdy38GgzXvevsrXdlHLzDR1fxTEGMXK1GqipbPeUYoZE/Wcph4+mRYHVL3exv064
+# Dr1ZFWceYbSl1sp2Kqgq7YZ/nlH560TmdD83I2/x7BAxmMkL0CN/X1CL/uzzxpqu
+# 4NNSxYb0fXbbXzx++JwS5w2i+Lr563jCuEsILRXCjY3801eDjCOO+4AAQLkbie63
+# kxxwQHlbzZuorvUJLaf1uTiQDWfUQEfa
 # SIG # End signature block
