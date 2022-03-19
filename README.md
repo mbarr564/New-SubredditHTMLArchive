@@ -35,3 +35,4 @@ If you run the script with the -Background switch parameter supplied, you will i
 - Script spawns itself as a scheduled task, enabling background runs and rerun scheduling.
 - Added -Background parameter to set spawned task LogonType to S4U (no stored password).
 - PowerShell Gallery: https://www.powershellgallery.com/packages/New-SubredditHTMLArchive/
+- Updated hang detection to not trigger if output JSON/media folder is growing by 1GB/4hrs.
