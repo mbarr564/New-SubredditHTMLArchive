@@ -1,5 +1,5 @@
 ﻿<#PSScriptInfo
-.VERSION 2.0.6
+.VERSION 2.0.7
 .GUID 3ae5d1f9-f5be-4791-ab41-8a4c9e857e9c
 .AUTHOR mbarr564@protonmail.com
 .PROJECTURI https://github.com/mbarr564/New-SubredditHTMLArchive
@@ -49,7 +49,7 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Friday, March 18, 2022 12:52:30 AM
+    Last update: Friday, March 18, 2022 6:44:49 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
@@ -139,7 +139,7 @@ else
     {
         ## Interactive console rename and resize attempt
         Write-Host "Task running under interactive logon type, updating title and resizing console window ..." -ForegroundColor Cyan
-        Write-Output "`n`0`n`0`n`0`n" #skip lines (with new lines and nulls) so the progress banner doesn't cover interactive console output
+        Write-Output "`n`0`n`0`n`0`n"; if ($Subreddit){Write-Output "`0`n"} #skip lines (with new lines and nulls) so the progress banner doesn't cover interactive console output ..and skip one more for a single subreddit (because no completion time estimate)
         $host.UI.RawUI.WindowTitle = "Windows PowerShell - Task Scheduler > Task Scheduler Library > $scriptName > RunOnce" #based on size 16 Consolas font (right-click powershell.exe window title > properties > Font tab)
         if ($host.UI.RawUI.MaxPhysicalWindowSize.Width -ge 174){try {$host.UI.RawUI.BufferSize = New-Object -TypeName System.Management.Automation.Host.Size -ArgumentList 174, 9001} catch {}} #have to set buffer first, and then window size
         if ($host.UI.RawUI.MaxPhysicalWindowSize.Width -ge 174){try {$host.UI.RawUI.WindowSize = New-Object -TypeName System.Management.Automation.Host.Size -ArgumentList 174, 30} catch {}} #174 is max width on 1080p displays -- no wrapping with longest subreddit names
@@ -309,6 +309,7 @@ foreach ($Sub in $Subreddits)
         $global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --verbose --log $logPath" -WindowStyle Hidden -PassThru
         
         ## Custom CTRL+C handling and timeout detection
+        [int]$lastTotalCloneOutputGB = 0 #for hang detection
         [bool]$global:CTRLCUsedOnce = $false; [bool]$global:cloneHangDetected = $false
         [console]::TreatControlCAsInput = $true #change the default behavior of CTRL+C so that the script can intercept and use it versus just terminating the script: https://blog.sheehans.org/2018/10/27/powershell-taking-control-over-ctrl-c/
         Start-Sleep -Seconds 1 #sleep for 1 second and then flush the key buffer so any previously pressed keys are discarded and the loop can monitor for the use of CTRL+C. The sleep command ensures the buffer flushes correctly
@@ -322,7 +323,17 @@ foreach ($Sub in $Subreddits)
                 if ([int]$key.Character -eq 3){$global:CTRLCUsedOnce = $true; break} #CTRL+C pressed, exit while loop
                 $host.UI.RawUI.FlushInputBuffer()
             }
-            if ($cloneStopwatch.Elapsed -gt $cloneTimeout){$global:cloneHangDetected = $true; break} #over 4 hours have passed, exit while loop, and immediately re-attempt (also sometimes the process fails to exit, once the module has completed, which will NOT trigger a retry)
+            if ($cloneStopwatch.Elapsed -gt $cloneTimeout)
+            {
+                ## Detect if successfully downloading huge media files during the timespan
+                try {[int]$totalCloneOutputGB = ((Get-ChildItem -Path "$rootFolder\JSON\$Sub\" | Measure-Object -Sum -Property Length).Sum / 1GB)} catch {$global:cloneHangDetected = $true; break}
+                if ($totalCloneOutputGB -gt $lastTotalCloneOutputGB)
+                {
+                    $cloneStopwatch.Restart() #restart stopwatch from 0 to allow another 4 hours
+                    [int]$lastTotalCloneOutputGB = $totalCloneOutputGB #continue if output folder size is increasing by > 1GB/4hrs
+                }
+                else {$global:cloneHangDetected = $true; break} #over 4 hours have passed, and output folder has not grown by atleast 1GB, exit while loop, and immediately re-attempt (also triggers when the completed process fails to exit, but does NOT retry in that case)
+            }
         }
 
         ## CTRL+C pressed once - end python process
@@ -434,7 +445,7 @@ else
     ## Generate master index.html for all archived subreddits
     [string[]]$indexContents = @(); $endDateTime = (Get-Date); $timeElapsed = $endDateTime - $startDateTime
     Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Generating master index.html for all archives ..."
-    $indexContents += "<html><head><style>body {background-color: rgb(128, 128, 128);}</style><title>BDFR Archive Index</title></head><body><ul>"
+    $indexContents += "<html><head><style>body {background-color: rgb(127, 127, 127);}</style><title>BDFR Archive Index</title></head><body><ul>"
     foreach ($subredditDirectoryName in @((Get-ChildItem $zipOutputPath -Directory).Name))
     {
         $indexContents += "<li><a href=`"./$($subredditDirectoryName)/index.html`"><h2>/r/$subredditDirectoryName</h2></a></li>" #unordered list
@@ -458,8 +469,8 @@ else
 # SIG # Begin signature block
 # MIIVpAYJKoZIhvcNAQcCoIIVlTCCFZECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUTRIPr4oIAjP61W7IQoSl5fEy
-# RFWgghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUEj7Dv4YOGnzMrOMa5VqY7Igy
+# jHagghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -560,16 +571,16 @@ else
 # U2lnbmluZyBDQSBSMzYCEFXW/fyTR4LO3Cqs0hOoVDAwCQYFKw4DAhoFAKB4MBgG
 # CisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcC
 # AQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYE
-# FOmlxMfemKbYt1BoUfW/ovz44COZMA0GCSqGSIb3DQEBAQUABIICAJKqZpXYS7qe
-# 3dJiw3pGtUsOgi8JDWyGjrGq2byb21116ISF0HddoxZPP4JaDTvy1WU4dCNSaecy
-# 5BxGSOiWPa6Voh1xC7PM/pWlAizfTZkuUyrn9WFmFASLbRR2OAN+Hsz8buD36yKr
-# Qt9lkaWwlHl7D813yziHeeeJ3qgYjEVY1hJSSSmNCg6A3cN4KGf8GP34Q77jpYB/
-# GpGaC5KACz1BYeoSNR7IDzdEkz90B2YYQ9tEBfn43hUc+/IWZwoQLWrlqRBnimNG
-# AEzxu4ktGV42dN684QdCXG4cwlih61+fpq2mXm3Tw7zn7hpUs9qY6kOlKlHNIwsl
-# /YYO4UUZpaJOSvJgqju0gX6HMOBfhYcfLnL75Qx7FAyjjvgNn5hRpvPzZ0AwRzvc
-# TvxEDCTO+O33A9aCm+Djun1/jQF+nYxwXaKUQyHdb4Paf91HqhIc7WI4WAry3CJ0
-# zZJrvrQPrwfM3OM0Ec4oam7wzWW1tYMWKPKTh8WO8rhp50Z6mfWDvBNAlBBjB/p2
-# gDMtiFWkLVfABd1RQ9scZptYLGWPVxto1QUb1vJ7vvO8KJNTmtIfAll7dYB4vRf1
-# H/ujoYSuJzmSbok0QMzHYDmJ99zlc84KICbiiPgZDrMKT127NwacSpBbmEAAfeD6
-# WhPD7d70i9XbW615NitIKYJuY+FKSBAb
+# FPdcHrTpAY0qWM2hoitCPj5TYv4UMA0GCSqGSIb3DQEBAQUABIICAD9naSL4Hrjj
+# omcec6MnJGG1QA51xXPbNAnQnGdToJ0B3K44Vu8KeGFIrqtz8YnEANzeSyk0z7HI
+# UiZJ4fUkg90Czi7MmFpBDjVWSZqjXeVCsl5dMfnb4MRhZwYuH53AcXEoTIzwfe6v
+# +NaKzqiNOvHyQMkc0eFxqroyIMj9kE+3gWdeKQjDYm2fjgLg2GUw77pCTs1Acvdr
+# 3AoJyliuFA9W6t7PuDNUQeuqAZUQRr3GIXM8zmOMeUYtIaulrEjQIMFf1WDOUppL
+# 2mxMblx2r2h2WBkNMmRja7DVJtpe6tZ6aVZNaXYOKBhMJ1dzBj21ZHaWcmu+WHTJ
+# 3QqcbVA5K3VKPoUL46jKA05XvD+2l3M4Nh5PUkq/7BzbJsCsnoE0J4pUd3ts6uim
+# TU/wVN6rrYVjW6YEX0HGHJy67M3a1OgO/4OSm00NjRqrUA2oRfYNXgzqYy9poouG
+# O1mydZuTzbm9aOeRWbJB9zTbwmcTYOOwU8jfpe3V8WMdoCy+qr6lQg90dMIYykmC
+# J5mWrNiECrfdblvogGjjb+SbXCalZUOIVXlVy6bAH3jGGgW4kDCm2QLDpYDPentc
+# OCacN+vgHu1ap9H7dWU4bXwMnwMy2v0h0M44nAVy+Z2OKA6GxJmt6HzK5nOgdAFa
+# o7KvWgb3yFViGO7QTYFUdZKi3Oj/VHT3
 # SIG # End signature block
