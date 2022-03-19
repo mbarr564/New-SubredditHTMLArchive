@@ -4,7 +4,7 @@
 3) PS> Get-Help .\New-SubredditHTMLArchive.ps1 -Full  
   
 ## PowerShell Gallery Example Usage  
-1) PS> Install-Script -Name New-SubredditHTMLArchive  
+1) PS> Install-Script -Name New-SubredditHTMLArchive -Force  
 2) PS> New-SubredditHTMLArchive.ps1 -InstallPackages  
 3) PS> New-SubredditHTMLArchive.ps1 -Subreddits 'HackRF','DataHoarder','Onions' -Background  
   
