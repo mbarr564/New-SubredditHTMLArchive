@@ -1,5 +1,5 @@
 ﻿<#PSScriptInfo
-.VERSION 2.1.0
+.VERSION 2.0.9
 .GUID 3ae5d1f9-f5be-4791-ab41-8a4c9e857e9c
 .AUTHOR mbarr564@protonmail.com
 .PROJECTURI https://github.com/mbarr564/New-SubredditHTMLArchive
@@ -49,7 +49,7 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Saturday, March 19, 2022 8:24:10 PM
+    Last update: Saturday, March 19, 2022 12:55:11 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
@@ -128,7 +128,7 @@ else
     [datetime]$taskTriggerTime = ((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}).Triggers.StartBoundary) #this won't work if user reruns task later, but will if they set a new trigger.. added because LastRunTime wasn't being reliable
     if (($taskLastRunTime -lt ((Get-Date).AddSeconds(-45))) -or ($taskTriggerTime -lt ((Get-Date).AddSeconds(-5)))) #for reasons unknown, the spawned task's LastRunTime is about 30 seconds before the task was even created..
     {
-        Write-Warning "Detected running script task! Last run: $($taskLastRunTime). Triggered: $($taskTriggerTime). Exiting ..."
+        Write-Warning "Detected running script task! Last run: $($taskLastRunTime). First run: $($taskTriggerTime). Exiting ..."
         Write-Warning "Task Scheduler > Task Scheduler Library > $scriptName > $taskName"
         Start-Process 'taskschd.msc'
         exit #exit so any background process is not interrupted
@@ -296,8 +296,6 @@ foreach ($Sub in $Subreddits)
     ## Function for BDFR clone retries
     function Clone-Subreddit
     {
-        param ([string[]]$excludeIDs)
-
         ## Check / Create / Clean output folders
         Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Checking, creating, cleaning output folders ..."
         foreach ($outputSubFolder in @('JSON','HTML')){
@@ -308,8 +306,7 @@ foreach ($Sub in $Subreddits)
         Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Using BDFR to clone subreddit to disk in JSON ..."
         [string]$global:logPath = "$rootFolder\logs\bdfr_$($Sub)_$(Get-Date -f yyyyMMdd_HHmmss).log.txt" #global so these variables don't disappear each time the function exits
         Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Status (CTRL+C to retry): $logPath"
-        if (-not($excludeIDs)){$global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --verbose --log $logPath" -WindowStyle Hidden -PassThru}
-        else {$global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --verbose --exclude-id $($excludeIDs -join ' --exclude-id ') --log $logPath" -WindowStyle Hidden -PassThru}
+        $global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --verbose --log $logPath" -WindowStyle Hidden -PassThru
         
         ## Custom CTRL+C handling and timeout detection
         [int]$lastTotalCloneOutputGB = 0 #for hang detection
@@ -384,19 +381,12 @@ foreach ($Sub in $Subreddits)
 
     ## BDFR: Initial clone attempt and function retry loop
     Clone-Subreddit
-    [int]$triesLeft = 20; [bool]$cloneSuccessful = $false; [string[]]$errorSubmissionIDs = @()
+    [int]$triesLeft = 20; [bool]$cloneSuccessful = $false
     while (($triesLeft -gt 0) -and (-not($cloneSuccessful)))
     {
-        if (-not((Get-Content $logPath -Tail 1 -ErrorAction SilentlyContinue) -like "*INFO] - Program complete"))
+        if (-not((Get-Content $logPath -Tail 1 -ErrorAction SilentlyContinue) -like "*INFO] - Program complete")) #this process often throws errors, so check for the program completion string in the tail of the log file
         {
-            ## Check log for recurring problem submission IDs (and --exclude-id them on retries)
-            $matches = $null #next line generates $matches automatic variable with named group 'ID'
-            Get-Content $logPath -Tail 100 -ErrorAction SilentlyContinue | Where-Object {$_ -match "(ERROR] -.*in submission )(?<ID>[a-z0-9]{5,6})( to )"} | Out-Null
-            if ($matches.ID){$errorSubmissionIDs += $matches.ID}
-            [string[]]$excludeIDs = @(($errorSubmissionIDs | Group-Object | Where-Object {$_.Count -ge 3}).Name) #if the same submission ID has generated an error at least three times, exclude the ID from the next BDFR clone attempt
-            if ($excludeIDs){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Excluding failing submission ID(s) from retry: $($excludeIDs -join ', ') ..." -ForegroundColor Yellow}
-
-            ## Retry clone operation
+            ## BDFR: Retry clone operation
             $totalCloneRetries++
             if ($CTRLCUsedOnce){$retryReason = 'User cancelled'}
             if ($cloneHangDetected){$retryReason = 'Hang/timeout over 4 hours during'}
@@ -404,12 +394,12 @@ foreach ($Sub in $Subreddits)
             Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub] $retryReason BDFR clone operation -- retrying up to $triesLeft more times ..." -ForegroundColor Yellow
             [int]$sleepMinutes = $totalCloneRetries - ($totalCloneSuccess * 5) #sleep one minute for every retry/error/cancel, but remove five minutes for each success
             if ($sleepMinutes -ge 1){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Sleeping $sleepMinutes minute(s) before trying again ..." -ForegroundColor Yellow; Start-Sleep -Seconds ($sleepMinutes * 60)}
-            Clone-Subreddit $excludeIDs
+            Clone-Subreddit
             $triesLeft--
         }
         else {$cloneSuccessful = $true; $totalCloneSuccess++}
     }
-    if (-not($cloneSuccessful)){throw "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Error: Command: 'python.exe -m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --log $logPath' returned exit code '$($bdfrProcess.ExitCode)'! This was the final retry attempt. Excluded submission IDs: $($excludeIDs -join ', ')"}
+    if (-not($cloneSuccessful)){throw "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Error: Command: 'python.exe -m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --log $logPath' returned exit code '$($bdfrProcess.ExitCode)'! This was the final retry attempt."}
     if ($CTRLCUsedOnce -or $cloneHangDetected){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Information: the cancelled clone operation had already completed!" -ForegroundColor Cyan} #rarely the clone operation succeeds around the same time a clone is cancelled (or the process hangs after completion), so in that case, acknowledge (but ignore and don't retry or exit)
 
     ## BDFR-HTML: Process Cloned Subreddit JSON into HTML
@@ -483,8 +473,8 @@ else
 # SIG # Begin signature block
 # MIIVpAYJKoZIhvcNAQcCoIIVlTCCFZECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUzq3WtX5ZQuKFfq39rZ48/+YC
-# LWygghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUJehlsCsrbKH+Kcmvq8yNHHZG
+# S6OgghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -585,16 +575,16 @@ else
 # U2lnbmluZyBDQSBSMzYCEFXW/fyTR4LO3Cqs0hOoVDAwCQYFKw4DAhoFAKB4MBgG
 # CisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcC
 # AQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYE
-# FEe8dhzf4P0uFec8KG80MncZQam0MA0GCSqGSIb3DQEBAQUABIICAB7DKYTl3uXI
-# hNb30lqDuWqWVOAxRFWE+vteaXPyXpm9WBN7VlJsoVFryTaavUkgJGwBFljw/sKy
-# 5rcLp5qt0af1VDlYuJd0Y2nQeefBChc4XwM/z9zCGAw7id96Jon4TBYEwF+LL2e4
-# Bt0x/6i9oe7xvZYelP/vLL272fTxn8mfJ9mWyatXTBW3Hg9YLl2XkFIPzsMjlNoV
-# S7VEbxNibzbw+9jIGhjs4oJ2oNGJl9sVhB/bbX2BnUNFM3TtXkghTdMZFoAzj6+1
-# TfqCqGz4/DwjD1y+OxqF7Y1eTdKRdTkBufW86wc115re9ubzIv9URQ0eS5p+aWTS
-# iwHPq2Hr9fvTCdzAON5Y0HR4JpQcKcVw+JXYEmskjd8PHYkk3T8QY5ol1l5MH0pG
-# sNxb2UNzh/ePDhVbpHsXLyDtx1mW+Bnx304vi/Ym9x5U7FMVy0zkaIJxiZmR1K2F
-# 74yu5R9bkk2AQFFg03exhnDZkfFLzXlz3VN2hiUIXtYH2PaXPlJ3DCoiYGT+vANC
-# 2/dy4zIJ++OWOfUclNcrzFTJKr5nX2CMI901vZ38BCuieoc9FYtIKlX4KHQ+4Uul
-# eCq4/osY+0Ih6J7o/WLZ+EOzUb5cixI3CSzvaB0Q6UNyZVQoaYPmZ4F5hGwEDjMb
-# IGpCJQIeUgUpaxZqYXJEkGCCIf5WmaiD
+# FAgwuupxu5PP7k5CwR9OY2o3ijKhMA0GCSqGSIb3DQEBAQUABIICAIEiEulbcTQV
+# e4dsziao2F7z011+4QL2493FCUuXVKxG0U7C7f8Ah9/4WgW6UEtpOqH97YSb1AaV
+# 9w4sqp/v6nQeFU0gRHcVcjreMQl1ZhB5oJKFbRHCTxaJnjWBnbqVjCuROAzzDQUY
+# N5a3oyeS9X2xYgSLOV08f8a1yODSpYxmzbskaGAWqf/J0PoQWw5srwylp2mjale2
+# +TJV1QnKGWTeUo1hMC7WfggERDNNlVyAt/kC8Cy5nz2k8exLlXyOfJKbphrd7ZBE
+# /ugNVYlsDIQyZ+CBh/Vd1tDJS0b3fb99XOYOJaEhUa0iq7ulAH0Qwaez3vUK4qUG
+# CtTyD9QpxZ8g82+b+SZ4BIqWifLgL/dkT8Np5iD5EypBaH6NL1LMfQL9KXXMyHg6
+# +pxxRlHlvxNEYnRghmHvhcP1pF4G+Cnvz1dm/+1lqrzZY+uVuE8Ac6Rf9Xxb4HPR
+# nG/J+laUGkqrCn+GgiGEaaxTa4eiwmSHS2eB/llgK1L4mx9cvLoYMnocR/maZAA4
+# NF993jN+84st3Cop0VYCgRCQPTwsXopXmBLfc5eoNZ65azxnz05L54sVvmkv5aRl
+# R02YorCBz9eGdn9fpIsCOVPD2uBZcKtX1mvOrhYUnf7bKalWDTYu3VYKrhkwlhHn
+# KfLjVTz1CSA/uTPxUv8gQsX9VOx71IwK
 # SIG # End signature block

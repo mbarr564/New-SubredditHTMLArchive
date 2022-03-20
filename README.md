@@ -1,12 +1,14 @@
 ## GitHub Example Usage  
 1) PS> Invoke-WebRequest -URI https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/New-SubredditHTMLArchive.ps1 -OutFile .\New-SubredditHTMLArchive.ps1  
-2) PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python' -InstallPackages  
-3) PS> Get-Help .\New-SubredditHTMLArchive.ps1 -Full  
+2) PS> .\New-SubredditHTMLArchive.ps1 -Subreddit 'PowerShell' -InstallPackages  
+3) PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'GNURadio','SRAWeekend','Tails' -Background
+4) PS> Get-Help .\New-SubredditHTMLArchive.ps1 -Full  
   
 ## PowerShell Gallery Example Usage  
-1) PS> Install-Script -Name New-SubredditHTMLArchive -Force  
-2) PS> New-SubredditHTMLArchive.ps1 -InstallPackages  
+1) PS> Install-Script -Name New-SubredditHTMLArchive  
+2) PS> New-SubredditHTMLArchive.ps1 -Subreddit 'Python' -InstallPackages  
 3) PS> New-SubredditHTMLArchive.ps1 -Subreddits 'HackRF','DataHoarder','Onions' -Background  
+4) PS> Update-Script -Name New-SubredditHTMLArchive
   
 ## Screenshots  
 The script will run and make itself into a task called 'RunOnce' in Task Scheduler (taskschd.msc):  
@@ -36,3 +38,4 @@ If you run the script with the -Background switch parameter supplied, you will i
 - Added -Background parameter to set spawned task LogonType to S4U (no stored password).
 - PowerShell Gallery: https://www.powershellgallery.com/packages/New-SubredditHTMLArchive/
 - Updated hang detection to not trigger if output JSON/media folder is growing by 1GB/4hrs.
+- Checks BDFR logs for repeating errors from a submission ID, and excludes those IDs on retry.
