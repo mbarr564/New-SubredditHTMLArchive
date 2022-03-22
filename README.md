@@ -2,7 +2,6 @@
 1) PS> Invoke-WebRequest -URI https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/New-SubredditHTMLArchive.ps1 -OutFile .\New-SubredditHTMLArchive.ps1  
 2) PS> .\New-SubredditHTMLArchive.ps1 -Subreddit 'PowerShell' -InstallPackages  
 3) PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'GNURadio','SRAWeekend','Tails' -Background
-4) PS> Get-Help .\New-SubredditHTMLArchive.ps1 -Full  
   
 ## PowerShell Gallery Example Usage  
 1) PS> Install-Script -Name New-SubredditHTMLArchive  
