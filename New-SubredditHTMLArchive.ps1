@@ -1,5 +1,5 @@
 ﻿<#PSScriptInfo
-.VERSION 2.1.0
+.VERSION 2.1.1
 .GUID 3ae5d1f9-f5be-4791-ab41-8a4c9e857e9c
 .AUTHOR mbarr564@protonmail.com
 .PROJECTURI https://github.com/mbarr564/New-SubredditHTMLArchive
@@ -29,9 +29,9 @@
             ii. For manual BDFR-HTML install in case of Pillow install error: From an elevated CMD window, type these two quoted commands: 1) "cd %USERPROFILE%\Documents\BDFR\module_clone\bdfr-html", 2) "python.exe setup.py install"
             iii. https://stackoverflow.com/questions/64302065/pillow-installation-pypy3-missing-zlib
 .PARAMETER Subreddit
-    The name of the subreddit (as it appears after the /r/ in the URL) that will be archived.
+    The name of a single subreddit that will be archived.
 .PARAMETER Subreddits
-    An array of subreddit names (as they appear after the /r/ in the URL) that will be archived.
+    An array of subreddit names that will be archived.
     Also generates a master index.html containing links to all of the other generated subreddit index.html files.
     All generated subreddit folders, files, and index pages, are automatically packaged into a ZIP file.
 .PARAMETER InstallPackages
@@ -43,13 +43,11 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddit PowerShell -InstallPackages
 .EXAMPLE
-    PS> .\New-SubredditHTMLArchive.ps1 -Subreddit PowerShell
-.EXAMPLE
-    PS> .\New-SubredditHTMLArchive.ps1 -Subreddits (Get-Content "$($env:USERPROFILE)\Desktop\subreddit_list.txt") -InstallPackages
+    PS> .\New-SubredditHTMLArchive.ps1 -Subreddits (Get-Content "$($env:USERPROFILE)\Desktop\subreddit_list.txt") -Background
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Saturday, March 19, 2022 8:24:10 PM
+    Last update: Monday, March 21, 2022 10:13:13 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
@@ -74,7 +72,7 @@ if ($Subreddits)
     [string[]]$badNames = @(); $Subreddits = $Subreddits | Select-Object -Unique; $Subreddits | ForEach-Object {if ($_ -notmatch "^[A-Z0-9_]{2,21}$"){$badNames += $_}}
     if ($badNames.count -gt 0){throw "Error: Subreddit name(s) failed regex validation: $($badNames -join ', ')"}
     [int]$hoursToArchiveAll = (120 * ($Subreddits.count)) / 60 #from experience BDFR usually takes 1-3hrs to finish pulling down the API maximum of 1000 records, per subreddit.. so 120 minutes
-    if ($hoursToArchiveAll -gt 24){$timeToArchiveAll = "over $($hoursToArchiveAll / 24) full day(s)"} else {$timeToArchiveAll = "$hoursToArchiveAll hours"}
+    if ($hoursToArchiveAll -gt 24){$timeToArchiveAll = "over $([int]($hoursToArchiveAll / 24)) full day(s)"} else {$timeToArchiveAll = "$hoursToArchiveAll hours"}
     if (-not($isAdmin)){Write-Host "Estimated maximum time to finish $($Subreddits.count) subreddits: $timeToArchiveAll ($((Get-Date).AddHours($hoursToArchiveAll)))" -ForegroundColor Cyan}
 }
 else
@@ -104,7 +102,7 @@ if (-not((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -a
         TaskPath = $scriptName
         Trigger = (New-ScheduledTaskTrigger -At ((Get-Date).AddSeconds(3)) -Once)
         Action = (New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "$($PSCommandPath)$scriptArgs") #space before $scriptArgs included already in string build
-        Settings = (New-ScheduledTaskSettingsSet -DisallowDemandStart -ExecutionTimeLimit (New-TimeSpan -Seconds 0)) #must be run with a new trigger datetime, instead of right-clicking the task and choosing run, and PT0S equiv for indefinite/disabled run time
+        Settings = (New-ScheduledTaskSettingsSet -DisallowDemandStart -ExecutionTimeLimit (New-TimeSpan -Seconds 0)) #1) AsJob so child python/BDFR process is cleaned up if task is terminated. 2) must be run with a new trigger datetime, instead of right-clicking the task and choosing run. 3) PT0S equiv for indefinite/disabled run time
         Principal = (New-ScheduledTaskPrincipal -UserID "$($env:COMPUTERNAME)\$($env:USERNAME)" -LogonType $logonType -RunLevel Limited)
         ErrorAction = 'Stop'
         Force = $true} #force overwrite of previous task with same name
@@ -116,7 +114,7 @@ if (-not((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -a
     try {Register-ScheduledTask @taskArguments | Out-Null} #can trigger UAC admin prompt, which will rerun script as admin to create the task, if task creation fails.. the created task will NOT run as admin
     catch [Microsoft.Management.Infrastructure.CimException]{if (-not($isAdmin)){Start-Process 'powershell.exe' -ArgumentList "$($PSCommandPath)$scriptArgs" -Verb RunAs -Wait} else {throw $error[0]}} #access denied.. rerun this script with same args, as admin (will also trigger if overwriting task with S4U LogonType)
     catch {throw $error[0]} #S4U type will trigger UAC admin prompt to create the task.. or.. user can create as Interactive, and manually change the 'Security options' to 'Run whether user is logged on or not', which does NOT trigger a UAC prompt.
-    if (Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}){if ($Background -and (-not($isAdmin))){Write-Host "Transcript logging for successfully spawned Task Scheduler background task (taskschd.msc):`n$transcriptPath`nFinished ZIP archive output path: $zipOutputPath" -ForegroundColor Cyan}}
+    if (Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}){if ($Background -and (-not($isAdmin))){Write-Host "Transcript logging for successfully spawned Task Scheduler background task (taskschd.msc):`n$transcriptPath" -ForegroundColor Cyan}}
     else {throw "Error: failed to create scheduled task!"}
     if ($isAdmin){Start-Sleep -Seconds 1} #if running as admin, pause a moment so the user can see the administrator console output
     exit
@@ -271,7 +269,7 @@ if (-not($bdfrInstalled -and $bdfrhtmlInstalled))
     [string[]]$installedPythonModules =  @((pip list --disable-pip-version-check) | Where-Object {$_ -match "^[A-Z0-9-]{3,18}.*[0-9]{1,4}`.[0-9]{1,2}(`.[0-9]{1,2})?$"})
     if (($installedPythonModules.count) -gt ($oldinstalledPythonModules.count))
     {
-        [string[]]$newPythonModuleNames = (Compare-Object -ReferenceObject $installedPythonModules -DifferenceObject $oldinstalledPythonModules).InputObject | ForEach-Object {($_ -split ' ')[0]} #grab first element after splitting on space, the module name, without version
+        [string[]]$newPythonModuleNames = (Compare-Object -ReferenceObject $installedPythonModules -DifferenceObject $oldinstalledPythonModules).InputObject | ForEach-Object {($_ -split ' ')[0]}
         Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Installed $($newPythonModuleNames.count) Python modules: $($newPythonModuleNames -join ', ')"
     }
     foreach ($installedPythonModule in $installedPythonModules)
@@ -296,7 +294,7 @@ foreach ($Sub in $Subreddits)
     ## Function for BDFR clone retries
     function Clone-Subreddit
     {
-        param ([string[]]$excludeIDs)
+        param ([string[]]$IncludeIDsFilePath, [string[]]$ExcludeIDs)
 
         ## Check / Create / Clean output folders
         Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Checking, creating, cleaning output folders ..."
@@ -308,18 +306,19 @@ foreach ($Sub in $Subreddits)
         Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Using BDFR to clone subreddit to disk in JSON ..."
         [string]$global:logPath = "$rootFolder\logs\bdfr_$($Sub)_$(Get-Date -f yyyyMMdd_HHmmss).log.txt" #global so these variables don't disappear each time the function exits
         Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Status (CTRL+C to retry): $logPath"
-        if (-not($excludeIDs)){$global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --verbose --log $logPath" -WindowStyle Hidden -PassThru}
-        else {$global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --verbose --exclude-id $($excludeIDs -join ' --exclude-id ') --log $logPath" -WindowStyle Hidden -PassThru}
+        if ($IncludeIDsFilePath){$global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --include-id-file $IncludeIDsFilePath --verbose --log $logPath" -WindowStyle Hidden -PassThru}
+        elseif ($ExcludeIDs){$global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --exclude-id $($ExcludeIDs -join ' --exclude-id ') --verbose --log $logPath" -WindowStyle Hidden -PassThru}
+        else {$global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --verbose --log $logPath" -WindowStyle Hidden -PassThru}
         
         ## Custom CTRL+C handling and timeout detection
-        [int]$lastTotalCloneOutputGB = 0 #for hang detection
+        [int]$lastTotalCloneOutputGB = 0
         [bool]$global:CTRLCUsedOnce = $false; [bool]$global:cloneHangDetected = $false
         if (-not($Background)){[console]::TreatControlCAsInput = $true} #change the default behavior of CTRL+C so that the script can intercept and use it versus just terminating the script: https://blog.sheehans.org/2018/10/27/powershell-taking-control-over-ctrl-c/
         if (-not($Background)){Start-Sleep -Seconds 1} #sleep for 1 second and then flush the key buffer so any previously pressed keys are discarded and the loop can monitor for the use of CTRL+C. The sleep command ensures the buffer flushes correctly
-        if (-not($Background)){$host.UI.RawUI.FlushInputBuffer()} #flush the keyboard buffer (clear previous CTRL+C presses)
-        $cloneTimeout = New-TimeSpan -Hours 4 #clone operation will retry after 4 hours elapsed, regardless of process status
+        if (-not($Background)){$host.UI.RawUI.FlushInputBuffer()}
+        $cloneTimeout = New-TimeSpan -Hours 4 #clone operation will retry after 4 hours elapsed, regardless of process status (unless output folder has grown in size)
         $cloneStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-        while (-not($bdfrProcess.HasExited)) #loop while the python BDFR process exists
+        while (-not($bdfrProcess.HasExited))
         {
             if (-not($Background)) #only read host keys if interactive
             {
@@ -329,7 +328,7 @@ foreach ($Sub in $Subreddits)
                     $host.UI.RawUI.FlushInputBuffer()
                 }
             }
-            else {Start-Sleep -Seconds 5} #if not interactive, we don't need to loop quickly to catch CTRL+C presses
+            else {Start-Sleep -Seconds 10} #if not interactive, we don't need to loop quickly to catch CTRL+C presses
             if ($cloneStopwatch.Elapsed -gt $cloneTimeout)
             {
                 [int]$totalCloneOutputGB = ((Get-ChildItem -Path "$rootFolder\JSON\$Sub\" | Measure-Object -Sum -Property Length).Sum / 1GB)
@@ -369,13 +368,13 @@ foreach ($Sub in $Subreddits)
                 [int]$secondsElapsed = ((Get-Date) - $loopStartTime).TotalSeconds
                 if ($secondsElapsed -gt $previousSecondsElapsed){Write-Host '.' -ForegroundColor Yellow -NoNewLine; $waitLoopSeconds--} #..while still writing one period per second to the console
             }
-            Write-Host '.' -ForegroundColor Yellow #without -NoNewLine, to prevent the next output from wrapping onto the above periods
+            Write-Host '.' -ForegroundColor Yellow
         }
 
         ## End function
         if (-not($Background)){[console]::TreatControlCAsInput = $false}
         if ($cloneHangDetected){Start-Process 'taskkill.exe' -ArgumentList "/F /PID $($bdfrProcess.ID)" -WindowStyle Hidden -ErrorAction Stop -Wait}
-        if (Get-Process -ID ($bdfrProcess.ID) -ErrorAction SilentlyContinue | Where-Object {$_.Name -eq 'python'})
+        if (Get-Process -ID ($bdfrProcess.ID) -ErrorAction SilentlyContinue)
         {
             Stop-Process $bdfrProcess -Force -ErrorAction SilentlyContinue #even after ($bdfrProcess.HasExited -eq $true), this Get-Process on the PID still sometimes returns the process ..so attempt another stop
             if (-not($bdfrProcess.WaitForExit(2000))){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Warning: python process ID '$($bdfrProcess.ID)' still running!" -ForegroundColor Yellow} #only warn because an occasional still-running Python instance will not impact script execution
@@ -384,35 +383,65 @@ foreach ($Sub in $Subreddits)
 
     ## BDFR: Initial clone attempt and function retry loop
     Clone-Subreddit
-    [int]$triesLeft = 20; [bool]$cloneSuccessful = $false; [string[]]$errorSubmissionIDs = @()
+    [int]$triesLeft = 10
+    [bool]$prawError = $false
+    [bool]$cloneSuccessful = $false
+    [string[]]$errorSubmissionIDs = @()
     while (($triesLeft -gt 0) -and (-not($cloneSuccessful)))
     {
-        if (-not((Get-Content $logPath -Tail 1 -ErrorAction SilentlyContinue) -like "*INFO] - Program complete"))
+        $logLastLine = Get-Content $logPath -Tail 1 -ErrorAction SilentlyContinue
+        if (-not($logLastLine -like "*INFO] - Program complete"))
         {
-            ## Check log for recurring problem submission IDs (and --exclude-id them on retries)
-            $matches = $null #next line generates $matches automatic variable with named group 'ID'
-            Get-Content $logPath -Tail 100 -ErrorAction SilentlyContinue | Where-Object {$_ -match "(ERROR] -.*in submission )(?<ID>[a-z0-9]{5,6})( to )"} | Out-Null
-            if ($matches.ID){$errorSubmissionIDs += $matches.ID}
-            [string[]]$excludeIDs = @(($errorSubmissionIDs | Group-Object | Where-Object {$_.Count -ge 3}).Name) #if the same submission ID has generated an error at least three times, exclude the ID from the next BDFR clone attempt
-            if ($excludeIDs){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Excluding failing submission ID(s) from retry: $($excludeIDs -join ', ') ..." -ForegroundColor Yellow}
+            ## Check log for recurring problem submission IDs (and --exclude-id param them on retries) (gci "$rootFolder\logs" | ? {$_.Name -like "bdfr*.log.txt"} | % {gc -Path $_.FullName -tail 1} | % {if ($_ -match "^OSError.*_(?<ID>[a-z0-9]{5,6})\.json'$"){$matches.ID}})
+            if ($logLastLine -match "^OSError.*Invalid argument.*_(?<ID>[a-z0-9]{5,6})\.json'$"){$errorSubmissionIDs += $matches.ID}; $matches = $null #intended to match a newline/illegal character filesystem issue.. generates a $matches automatic variable with named group 'ID' for the submission ID
+            if ($logLastLine -match "^praw\.exceptions\.InvalidURL\: Invalid URL\: (?<ID>[a-z0-9]{5,6})$"){$prawError = $true}; $matches = $null #if there's a praw error that spits the submission ID as the URL, make a best effort partial clone below
+            [string[]]$excludeIDs = @(($errorSubmissionIDs | Group-Object | Where-Object {$_.Count -ge 2}).Name) #if the same submission ID has generated two errors, exclude the ID from the next BDFR clone attempt
+
+            ## Check if excluded IDs are still generating errors, and try an inclusion list instead (for --include-id-file param)
+            if (-not($prawError))
+            {
+                [string[]]$stillFailingExcludeIDs = @(($errorSubmissionIDs | Group-Object | Where-Object {$_.Count -ge 3}).Name) #on three or more errors (once post --exclude-id addition), instead include all successful submission IDs, before the error ID
+                if ($stillFailingExcludeIDs)
+                {
+                    [string[]]$includeIDs = @() #workaround for archiver still attempting to clone --exclude-id post IDs (https://github.com/aliparlakci/bulk-downloader-for-reddit/issues/618)
+                    Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] Attempting clone with include ID list as excluded ID(s) still failing: $($stillFailingExcludeIDs -join ', ')" -ForegroundColor Yellow
+                    [string]$includeIDsFilePath = "$rootFolder\logs\bdfr_$($Sub)_includedSubmissionIDs_$(Get-Date -f yyyyMMdd_HHmmss).txt"
+                    Get-Content $logPath -ErrorAction SilentlyContinue | Where-Object {$_ -match "(archiver - INFO] - Record for entry item )(?<ID>[a-z0-9]{5,6})( written to disk)"} | ForEach-Object {$includeIDs += $matches.ID}
+                    if ($includeIDs){[string[]]$includeIDs = ((Compare-Object -ReferenceObject $includeIDs -DifferenceObject $excludeIDs).InputObject)} #remove exclude IDs from include IDs array
+                    if ($includeIDs){$includeIDs | Set-Content $includeIDsFilePath}; $matches = $null
+                }
+                elseif ($excludeIDs){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] Excluding failing submission ID(s) from retry: $($excludeIDs -join ', ') ..." -ForegroundColor Yellow}
+            }
+            else {Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] Encountered PRAW Invalid URL exception. Restarting once more for partial clone ..." -ForegroundColor Yellow}
 
             ## Retry clone operation
             $totalCloneRetries++
             if ($CTRLCUsedOnce){$retryReason = 'User cancelled'}
             if ($cloneHangDetected){$retryReason = 'Hang/timeout over 4 hours during'}
             if ((-not($CTRLCUsedOnce)) -and (-not($cloneHangDetected))){$retryReason = "Error '$($bdfrProcess.ExitCode)' during"}
-            Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub] $retryReason BDFR clone operation -- retrying up to $triesLeft more times ..." -ForegroundColor Yellow
-            [int]$sleepMinutes = $totalCloneRetries - ($totalCloneSuccess * 5) #sleep one minute for every retry/error/cancel, but remove five minutes for each success
-            if ($sleepMinutes -ge 1){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Sleeping $sleepMinutes minute(s) before trying again ..." -ForegroundColor Yellow; Start-Sleep -Seconds ($sleepMinutes * 60)}
-            Clone-Subreddit $excludeIDs
+            Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] $retryReason BDFR clone operation -- retrying up to $triesLeft more times" -ForegroundColor Yellow
+            if ($retryReason -like "Error*"){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] Last log line: $logLastLine" -ForegroundColor Yellow}
+            [int]$sleepMinutes = $totalCloneRetries - ($totalCloneSuccess * 5) #sleep one minute for every retry/error/cancel, but remove five minutes for each success (and negative values act as credits toward future strings of errors)
+            if ($sleepMinutes -ge 1){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] Sleeping $sleepMinutes minute(s) before trying again ..." -ForegroundColor Yellow; Start-Sleep -Seconds ($sleepMinutes * 60)}
+            if ($prawError){Clone-Subreddit; break} #make a best effort partial clone attempt with no inclusions/exclusions because they're generating praw errors (https://github.com/aliparlakci/bulk-downloader-for-reddit/issues/620)
+            elseif ($includeIDs){Clone-Subreddit -IncludeIDsFilePath $includeIDsFilePath}
+            elseif ($excludeIDs){Clone-Subreddit -ExcludeIDs $excludeIDs}
+            else {Clone-Subreddit}
             $triesLeft--
         }
         else {$cloneSuccessful = $true; $totalCloneSuccess++}
     }
-    if (-not($cloneSuccessful)){throw "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Error: Command: 'python.exe -m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --log $logPath' returned exit code '$($bdfrProcess.ExitCode)'! This was the final retry attempt. Excluded submission IDs: $($excludeIDs -join ', ')"}
+    if (-not($cloneSuccessful))
+    {
+        ## BDFR: Clone did not complete but process successfully retrieved submissions anyway
+        if ($includeIDs){$addlParams = "--include-id-file $includeIDsFilePath "} elseif ($excludeIDs){$addlParams = "--exclude-id $($ExcludeIDs -join ' --exclude-id ') "} else {$addlParams = ''} #so the error contains the full command string even with exclude/include ID params
+        Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Unrecoverable errors: command: 'python.exe -m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback $($addlParams)--verbose --log $logPath' returned exit code '$($bdfrProcess.ExitCode)'! This was the final retry attempt." -ForegroundColor Yellow
+        [int]$retrievedSubmissions = (Get-ChildItem "$rootFolder\JSON\$Sub" -Recurse -Include "*.json" | Measure-Object).Count
+        Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Processing partial clone of $retrievedSubmissions retrieved submissions ..." -ForegroundColor Yellow
+    }
     if ($CTRLCUsedOnce -or $cloneHangDetected){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Information: the cancelled clone operation had already completed!" -ForegroundColor Cyan} #rarely the clone operation succeeds around the same time a clone is cancelled (or the process hangs after completion), so in that case, acknowledge (but ignore and don't retry or exit)
 
-    ## BDFR-HTML: Process Cloned Subreddit JSON into HTML
+    ## BDFR-HTML: Process cloned subreddit JSON into HTML
     Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Using BDFR-HTML to generate HTML pages from JSON archive ..."
     $bdfrhtmlProcess = Start-Process "python.exe" -ArgumentList "-m bdfrtohtml --input_folder $rootFolder\JSON\$Sub --output_folder $rootFolder\HTML\$Sub" -WindowStyle Hidden -PassThru -Wait
     if ($bdfrhtmlProcess.ExitCode -ne 0){throw "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Error: Command: 'python.exe -m bdfrtohtml --input_folder $rootFolder\JSON\$Sub --output_folder $rootFolder\HTML\$Sub' returned exit code '$($bdfrhtmlProcess.ExitCode)'!"}
@@ -425,13 +454,13 @@ foreach ($Sub in $Subreddits)
     Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Deleting media folder files over 2MB ..."
     Get-ChildItem -Path "$rootFolder\HTML\$Sub\media" | Where-Object {(($_.Length)/1MB) -gt 2} | ForEach-Object {Remove-Item -LiteralPath "$($_.FullName)" -ErrorAction SilentlyContinue}
 
-    ## Loop End
+    ## Loop end
     Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Finished!"
     if (($Subreddits.count -eq 1) -or ($subLoopCount -eq $Subreddits.count)){Write-Progress -Activity "Archiving subreddit $subLoopCount of $($Subreddits.count) ..." -Completed} #if last loop, 100% progress
     else {$subLoopCount++}
 }
 
-## Script End / Package Output
+## Script end / Package output
 if ($Subreddits.count -eq 1)
 {
     ## Single subreddit: open HTML output folder
@@ -478,13 +507,14 @@ else
     Compress-Archive -Path "$zipOutputPath\*" -Destination "$zipOutputPath\indexed_HTML_archive_of_$($Subreddits.count)_subreddits_$(Get-Date -f yyyy-MM-dd).zip"
     Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Finished! Time elapsed: $(($timeElapsed.TotalHours).ToString("###.##")) hours"
     if (-not($Background)){Start-Process $zipOutputPath}
+    else {Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Indexed archives and ZIP file output path:`n$zipOutputPath"}
 }
 
 # SIG # Begin signature block
 # MIIVpAYJKoZIhvcNAQcCoIIVlTCCFZECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUzq3WtX5ZQuKFfq39rZ48/+YC
-# LWygghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUqUgzekmQyHRiUCVFE9m4nfH8
+# xzugghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -585,16 +615,16 @@ else
 # U2lnbmluZyBDQSBSMzYCEFXW/fyTR4LO3Cqs0hOoVDAwCQYFKw4DAhoFAKB4MBgG
 # CisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcC
 # AQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYE
-# FEe8dhzf4P0uFec8KG80MncZQam0MA0GCSqGSIb3DQEBAQUABIICAB7DKYTl3uXI
-# hNb30lqDuWqWVOAxRFWE+vteaXPyXpm9WBN7VlJsoVFryTaavUkgJGwBFljw/sKy
-# 5rcLp5qt0af1VDlYuJd0Y2nQeefBChc4XwM/z9zCGAw7id96Jon4TBYEwF+LL2e4
-# Bt0x/6i9oe7xvZYelP/vLL272fTxn8mfJ9mWyatXTBW3Hg9YLl2XkFIPzsMjlNoV
-# S7VEbxNibzbw+9jIGhjs4oJ2oNGJl9sVhB/bbX2BnUNFM3TtXkghTdMZFoAzj6+1
-# TfqCqGz4/DwjD1y+OxqF7Y1eTdKRdTkBufW86wc115re9ubzIv9URQ0eS5p+aWTS
-# iwHPq2Hr9fvTCdzAON5Y0HR4JpQcKcVw+JXYEmskjd8PHYkk3T8QY5ol1l5MH0pG
-# sNxb2UNzh/ePDhVbpHsXLyDtx1mW+Bnx304vi/Ym9x5U7FMVy0zkaIJxiZmR1K2F
-# 74yu5R9bkk2AQFFg03exhnDZkfFLzXlz3VN2hiUIXtYH2PaXPlJ3DCoiYGT+vANC
-# 2/dy4zIJ++OWOfUclNcrzFTJKr5nX2CMI901vZ38BCuieoc9FYtIKlX4KHQ+4Uul
-# eCq4/osY+0Ih6J7o/WLZ+EOzUb5cixI3CSzvaB0Q6UNyZVQoaYPmZ4F5hGwEDjMb
-# IGpCJQIeUgUpaxZqYXJEkGCCIf5WmaiD
+# FPX84PZTnppbvS2DvuC5BenLUsh0MA0GCSqGSIb3DQEBAQUABIICAFtzPE/E/9zI
+# Cji1qakvAMHCAGnHKbDI5d4XqtpMmu8hEFxhT5FRgKhizD0plF5ksAf7Hdk59iG6
+# /xbe5PHyGzANqweRb+YHIah9BgS/yX9pvnLk841GaJsC0fLEKOGgqV/qFwUYIcVs
+# 8ZooHds0vZhVI+Ipo+P5srHbIkSG1U38y3pcpQreFf7FS4wU5FKU8ZCgJMZBnyt9
+# Ln2KwV0313PZ1EbobW4rEzpasukKZQI9flUmYPBhLTMNQFj+NBBSPxeOYJ73OQn1
+# 3fcE+LA4/S61C9Fa47e3J1Oy1S6LsXN+Gz0jglC5bzBGjosIS2HuknEoQV+7YjVp
+# gJ+baAad6gtU4M7WwFnttX2zYFSrJtRZgT+OmSZfxsZEN0/z5ph3Q51QqyJ1Jy8B
+# eUMv7JUhTPTV2BD5Ik8DDGUrFOt1SgOHfuXH0jqJ11RRk767VH37rk24EYzhz94F
+# y3wBnmYtF+aY+pAkwZuJvUM/GbVIdE9abACxiboF7M1ggkP3QqEpthywcdsjcIJD
+# bH/UrIZIz4L0isOkK+hNrg5oQg3wxyFjBlATgYMXz2Lu9v6jMVK7Tn6ZfSppKiNG
+# gtHBqQA4bV49UmGTSOi6pyGkeyA7/EysRsiReYSdo+KNTuM1ITTtz4+H6s+IBqwR
+# ki2w8gRSsaecz3NxP1ZV5p+8oRCe2LcN
 # SIG # End signature block

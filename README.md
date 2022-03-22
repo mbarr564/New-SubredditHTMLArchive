@@ -19,9 +19,11 @@ Then seconds later, that created task will run, and by default will pop up an in
   
 ![Interactive Screenshot](./screenshots/screenshotScript.png "Interactive Screenshot")
   
-If you run the script with the -Background switch parameter supplied, you will instead see the path to the transcript log, and the future finished ZIP file directory:  
+If run with the -Background switch parameter, you will instead see the path to the transcript log:  
   
 ![Background Task Screenshot](./screenshots/screenshotBackground.png "Background Task Screenshot")
+  
+The finished HTML archives and ZIP path are in the task description, and the end of the transcript.  
   
 ## Added features since initial release  
 - Missing dependency package installation with the new -InstallPackages parameter.
@@ -31,7 +33,7 @@ If you run the script with the -Background switch parameter supplied, you will i
     2. Compresses master index and all HTML archive folders into a portable ZIP file.
 - Assisted GitHub authentication step, progress bar, and subreddit input validation.
 - Better BDFR-HTML module installation with error/standard output logging.
-- BDFR clone operations are now retried up to 20 times, with cumulative sleep.
+- BDFR clone operations are now retried up to 10 times, with cumulative sleep.
 - Added logs folder and cleaned all folder management code.. all logs now retained.
 - Added CTRL+C handling: once restarts clone, twice exits script. Added loop hang detection.
 - Script spawns itself as a scheduled task, enabling background runs and rerun scheduling.
@@ -39,3 +41,4 @@ If you run the script with the -Background switch parameter supplied, you will i
 - PowerShell Gallery: https://www.powershellgallery.com/packages/New-SubredditHTMLArchive/
 - Updated hang detection to not trigger if output JSON/media folder is growing by 1GB/4hrs.
 - Checks BDFR logs for repeating errors from a submission ID, and excludes those IDs on retry.
+- Now passes partial subreddit JSON clones to BDFR-HTML instead of terminating the script.
