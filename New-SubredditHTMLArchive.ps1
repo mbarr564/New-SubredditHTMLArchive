@@ -1,5 +1,5 @@
 ﻿<#PSScriptInfo
-.VERSION 2.1.1
+.VERSION 2.1.2
 .GUID 3ae5d1f9-f5be-4791-ab41-8a4c9e857e9c
 .AUTHOR mbarr564@protonmail.com
 .PROJECTURI https://github.com/mbarr564/New-SubredditHTMLArchive
@@ -47,7 +47,7 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Monday, March 21, 2022 10:13:13 PM
+    Last update: Wednesday, March 23, 2022 2:34:56 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
@@ -407,7 +407,6 @@ foreach ($Sub in $Subreddits)
                     Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] Attempting clone with include ID list as excluded ID(s) still failing: $($stillFailingExcludeIDs -join ', ')" -ForegroundColor Yellow
                     [string]$includeIDsFilePath = "$rootFolder\logs\bdfr_$($Sub)_includedSubmissionIDs_$(Get-Date -f yyyyMMdd_HHmmss).txt"
                     Get-Content $logPath -ErrorAction SilentlyContinue | Where-Object {$_ -match "(archiver - INFO] - Record for entry item )(?<ID>[a-z0-9]{5,6})( written to disk)"} | ForEach-Object {$includeIDs += $matches.ID}
-                    if ($includeIDs){[string[]]$includeIDs = ((Compare-Object -ReferenceObject $includeIDs -DifferenceObject $excludeIDs).InputObject)} #remove exclude IDs from include IDs array
                     if ($includeIDs){$includeIDs | Set-Content $includeIDsFilePath}; $matches = $null
                 }
                 elseif ($excludeIDs){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] Excluding failing submission ID(s) from retry: $($excludeIDs -join ', ') ..." -ForegroundColor Yellow}
@@ -513,8 +512,8 @@ else
 # SIG # Begin signature block
 # MIIVpAYJKoZIhvcNAQcCoIIVlTCCFZECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUqUgzekmQyHRiUCVFE9m4nfH8
-# xzugghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUZ074fwstpWe5Vx/1ibXCv+YY
+# WCKgghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -615,16 +614,16 @@ else
 # U2lnbmluZyBDQSBSMzYCEFXW/fyTR4LO3Cqs0hOoVDAwCQYFKw4DAhoFAKB4MBgG
 # CisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcC
 # AQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYE
-# FPX84PZTnppbvS2DvuC5BenLUsh0MA0GCSqGSIb3DQEBAQUABIICAFtzPE/E/9zI
-# Cji1qakvAMHCAGnHKbDI5d4XqtpMmu8hEFxhT5FRgKhizD0plF5ksAf7Hdk59iG6
-# /xbe5PHyGzANqweRb+YHIah9BgS/yX9pvnLk841GaJsC0fLEKOGgqV/qFwUYIcVs
-# 8ZooHds0vZhVI+Ipo+P5srHbIkSG1U38y3pcpQreFf7FS4wU5FKU8ZCgJMZBnyt9
-# Ln2KwV0313PZ1EbobW4rEzpasukKZQI9flUmYPBhLTMNQFj+NBBSPxeOYJ73OQn1
-# 3fcE+LA4/S61C9Fa47e3J1Oy1S6LsXN+Gz0jglC5bzBGjosIS2HuknEoQV+7YjVp
-# gJ+baAad6gtU4M7WwFnttX2zYFSrJtRZgT+OmSZfxsZEN0/z5ph3Q51QqyJ1Jy8B
-# eUMv7JUhTPTV2BD5Ik8DDGUrFOt1SgOHfuXH0jqJ11RRk767VH37rk24EYzhz94F
-# y3wBnmYtF+aY+pAkwZuJvUM/GbVIdE9abACxiboF7M1ggkP3QqEpthywcdsjcIJD
-# bH/UrIZIz4L0isOkK+hNrg5oQg3wxyFjBlATgYMXz2Lu9v6jMVK7Tn6ZfSppKiNG
-# gtHBqQA4bV49UmGTSOi6pyGkeyA7/EysRsiReYSdo+KNTuM1ITTtz4+H6s+IBqwR
-# ki2w8gRSsaecz3NxP1ZV5p+8oRCe2LcN
+# FD1QAkuUH8ZnjqnwdhbdEEoOWPHtMA0GCSqGSIb3DQEBAQUABIICADyh/8wtrx3+
+# yD+q88dSc+yfJsQdNuenGFowV7URqxcBeNV5HHEk2Wl1WieCS8QG0fvmIeJHdBuS
+# y2uIFt4OjwI8hJ2lh7cSnOQayIdImPQR6m+BtYDLfR+hwP0SegXsqZnM3JuuIuTr
+# 1wYcg/sI1SrPcb//DuIU/gRImdA6/vI6J1GI8E6oLM1fwYjhN9+4fB8cNtVxe2Ds
+# Sm/x3f/1x1p7p0P7ie+F5OUI4lfdg9lW9JBsaE9OjMdyN2lMqlXQinUFT86uhc3J
+# SMQWXpwn2kMTC6l+ZM8a9hkqIOv2Xb7TL39HBZvCM0b3igO1nx8ZcJbsav8tURir
+# FSKlUUaI1nQPJfshIpXDQVAJAQEvOCH/R1B2/JSV4zJfX9jfubC3cB7+NAFu3h/E
+# XRYtFeJ2ErYFuu9fRzE6fDj1ZdrOJzYkrixtpNCCmEIUDo/NJDfk5FjBT9XtZzeW
+# 5sfDsR2VvZRNdcRv3K1l8Jt6pGWKyA88ew5iX0f20RDE3dW0K97z9rl3PAYrzJcS
+# YSjjHWkozsoTLzJGNbwNjGksJedMIYww72EQBk+GqsxxWTUtRvdaMRhTvrdDRciz
+# n7kMcchxY+4Y5mF64QAFPzsxURHUVMwZTTYUq2o/B+KM60XAFEOMIvXv6jCZiNsz
+# uiGiqqj2yZwIYDkqDDasxvANkZ4LwP4B
 # SIG # End signature block
