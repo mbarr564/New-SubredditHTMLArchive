@@ -1,12 +1,12 @@
 ## GitHub Example Usage  
 1) PS> Invoke-WebRequest -URI https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/New-SubredditHTMLArchive.ps1 -OutFile .\New-SubredditHTMLArchive.ps1  
 2) PS> .\New-SubredditHTMLArchive.ps1 -Subreddit 'PowerShell' -InstallPackages  
-3) PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'GNURadio','SRAWeekend','Tails' -Background
+3) PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'HackRF','GNURadio','SRAWeekend','Onions' -Background  
   
 ## PowerShell Gallery Example Usage  
 1) PS> Install-Script -Name New-SubredditHTMLArchive  
-2) PS> New-SubredditHTMLArchive.ps1 -Subreddit 'Python' -InstallPackages  
-3) PS> New-SubredditHTMLArchive.ps1 -Subreddits 'HackRF','DataHoarder','Onions' -Background  
+2) PS> New-SubredditHTMLArchive.ps1 -Subreddit 'DataHoarder' -InstallPackages  
+3) PS> New-SubredditHTMLArchive.ps1 -Subreddits (Get-Content "$($env:USERPROFILE)\Desktop\subs.txt")  
 4) PS> Update-Script -Name New-SubredditHTMLArchive  
   
 ## Comment Based Help  
