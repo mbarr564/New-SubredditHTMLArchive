@@ -7,7 +7,13 @@
 1) PS> Install-Script -Name New-SubredditHTMLArchive  
 2) PS> New-SubredditHTMLArchive.ps1 -Subreddit 'Python' -InstallPackages  
 3) PS> New-SubredditHTMLArchive.ps1 -Subreddits 'HackRF','DataHoarder','Onions' -Background  
-4) PS> Update-Script -Name New-SubredditHTMLArchive
+4) PS> Update-Script -Name New-SubredditHTMLArchive  
+  
+## Comment Based Help  
+See: [PSScriptInfo comment header breaking 'Get-Help .\Script.ps1 -Full'](https://stackoverflow.com/questions/71579241/powershell-gallery-psscriptinfo-comment-header-breaking-get-help-myscriptname/71579958#71579958)  
+1) PS> Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process  
+2) PS> Get-Content .\New-SubredditHTMLArchive.ps1 | Select-Object -Skip 7 | Set-Content "$($env:temp)\temp.ps1"  
+3) PS> Get-Help -Name "$($env:temp)\temp.ps1" -Full  
   
 ## Screenshots  
 The script will run and make itself into a task called 'RunOnce' in Task Scheduler (taskschd.msc):  
