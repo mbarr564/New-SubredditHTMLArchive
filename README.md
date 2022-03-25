@@ -5,7 +5,9 @@ Then type Y, and hit Enter to confirm. You can now close the second (Administrat
 The above allows this script to run, and requires all scripts that you run to be [code signed](https://blog.devgenius.io/powershell-code-signing-fc6086aeb61e?gi=8e073d4477a7),  
 which provides content validation, and is the most restrictive PowerShell execution policy available.  
   
-Then pick either GitHub or the PS Gallery option below to copy or install from. Both do the same thing, and you can copy/paste from this README into PowerShell.  
+Then pick either GitHub or the PS Gallery option below to copy or install from.  
+Both do the same thing, and you can copy/paste from this README into PowerShell.  
+  
 The Task Scheduler can be accessed by pressing the Windows key, typing the partial name 'Task S', then clicking 'Task Scheduler' when it pops up, or: press WinKey+R, type **taskschd.msc**, hit Enter.  
 The new task can be renamed (via right-click > Export..., then Actions > Import Task...) and rescheduled to retrigger, archiving the same subreddits in the description monthly, etc. If the task name is unchanged, it will be overwritten when the script is run from the command line again, such as when you update the script. The finished HTML archives and ZIP path are in the task description, and the end of the transcript.  
 Note that if the running task is ended manually (right-click > End), you will need to manually kill the orphaned python process in Task Manager (CTRL+ALT+DEL), or simply reboot before retrying.  
