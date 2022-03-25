@@ -5,7 +5,8 @@ Then type Y, and hit Enter to confirm. You can now close the second (Administrat
 The above allows this script to run, and requires all scripts that you run to be [code signed](https://blog.devgenius.io/powershell-code-signing-fc6086aeb61e?gi=8e073d4477a7),  
 which provides content validation, and is the most restrictive PowerShell execution policy available.  
   
-Then pick either GitHub or the PS Gallery option below to copy or install from. Both do the same thing, and you can copy/paste from this README into PowerShell. The new task can be renamed and rescheduled to retrigger and archive the same subreddits monthly, etc. If the running task is ended manually (Right-click > End), you will need to manually kill the orphaned python process in Task Manager (CTRL+ALT+DEL), or simply reboot before retrying.  
+Then pick either GitHub or the PS Gallery option below to copy or install from. Both do the same thing, and you can copy/paste from this README into PowerShell. If the running task is ended manually (Right-click > End), you will need to manually kill the orphaned python process in Task Manager (CTRL+ALT+DEL), or simply reboot before retrying.  
+The new task can be renamed and rescheduled to retrigger and archive the same subreddits monthly, etc.  
 The finished HTML archives and ZIP path are in the task description, and the end of the transcript.  
   
 ## GitHub: Example Usage  
