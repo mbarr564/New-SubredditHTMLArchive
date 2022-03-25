@@ -1,4 +1,4 @@
-If you don't usually run scripts, you'll need to run [PowerShell](https://docs.microsoft.com/en-us/learn/modules/introduction-to-powershell/): WinKey+R, type powershell, hit Enter.  
+If you don't usually run scripts, you'll need to run [PowerShell](https://docs.microsoft.com/en-us/learn/modules/introduction-to-powershell/): WinKey+R, type **powershell**, hit Enter.  
 In the taskbar at screen bottom, right-click the blue icon with >_ on it, choose 'Run as Administrator'.  
 Then at the console prompt (PS C:\Users\username>), type **Set-ExecutionPolicy AllSigned**, hit Enter.  
 Then type Y, and hit Enter to confirm. You can now close the second (Administrator titled) window.  
@@ -9,7 +9,7 @@ Then pick either GitHub or the PS Gallery option below to copy or install from. 
 The new task can be renamed and rescheduled to retrigger and archive the same subreddits monthly, etc.  
 The finished HTML archives and ZIP path are in the task description, and the end of the transcript.  
   
-The Task Scheduler can be accessed by pressing the Windows key, typing the partial name 'Task S', then clicking 'Task Scheduler' when it pops up, or: press WinKey+R, type taskschd.msc, hit Enter.  
+The Task Scheduler can be accessed by pressing the Windows key, typing the partial name 'Task S', then clicking 'Task Scheduler' when it pops up, or: press WinKey+R, type **taskschd.msc**, hit Enter.  
   
 ## GitHub: Example Usage  
 1) PS> Invoke-WebRequest -URI https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/New-SubredditHTMLArchive.ps1 -OutFile .\New-SubredditHTMLArchive.ps1  
