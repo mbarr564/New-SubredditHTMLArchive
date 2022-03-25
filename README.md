@@ -9,6 +9,8 @@ Then pick either GitHub or the PS Gallery option below to copy or install from. 
 The new task can be renamed and rescheduled to retrigger and archive the same subreddits monthly, etc.  
 The finished HTML archives and ZIP path are in the task description, and the end of the transcript.  
   
+The Task Scheduler can be accessed by pressing the Windows key, typing the partial name 'Task S', then clicking 'Task Scheduler' when it pops up, or: press WinKey+R, type taskschd.msc, hit Enter.  
+  
 ## GitHub: Example Usage  
 1) PS> Invoke-WebRequest -URI https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/New-SubredditHTMLArchive.ps1 -OutFile .\New-SubredditHTMLArchive.ps1  
 2) PS> .\New-SubredditHTMLArchive.ps1 -Subreddit 'PowerShell' -InstallPackages  
