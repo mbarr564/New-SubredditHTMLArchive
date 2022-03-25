@@ -47,7 +47,7 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Wednesday, March 23, 2022 2:34:56 PM
+    Last update: Thursday, March 24, 2022 9:30:16 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
@@ -102,7 +102,7 @@ if (-not((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -a
         TaskPath = $scriptName
         Trigger = (New-ScheduledTaskTrigger -At ((Get-Date).AddSeconds(3)) -Once)
         Action = (New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "$($PSCommandPath)$scriptArgs") #space before $scriptArgs included already in string build
-        Settings = (New-ScheduledTaskSettingsSet -DisallowDemandStart -ExecutionTimeLimit (New-TimeSpan -Seconds 0)) #1) AsJob so child python/BDFR process is cleaned up if task is terminated. 2) must be run with a new trigger datetime, instead of right-clicking the task and choosing run. 3) PT0S equiv for indefinite/disabled run time
+        Settings = (New-ScheduledTaskSettingsSet -DisallowDemandStart -ExecutionTimeLimit (New-TimeSpan -Seconds 0)) #1) must be run with a new trigger datetime, instead of right-clicking the task and choosing run. 2) PT0S equiv for indefinite/disabled run time
         Principal = (New-ScheduledTaskPrincipal -UserID "$($env:COMPUTERNAME)\$($env:USERNAME)" -LogonType $logonType -RunLevel Limited)
         ErrorAction = 'Stop'
         Force = $true} #force overwrite of previous task with same name
@@ -512,8 +512,8 @@ else
 # SIG # Begin signature block
 # MIIVpAYJKoZIhvcNAQcCoIIVlTCCFZECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUZ074fwstpWe5Vx/1ibXCv+YY
-# WCKgghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU0afQP5LRDnUjQEo6/ej/r1eD
+# gkugghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -614,16 +614,16 @@ else
 # U2lnbmluZyBDQSBSMzYCEFXW/fyTR4LO3Cqs0hOoVDAwCQYFKw4DAhoFAKB4MBgG
 # CisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcC
 # AQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYE
-# FD1QAkuUH8ZnjqnwdhbdEEoOWPHtMA0GCSqGSIb3DQEBAQUABIICADyh/8wtrx3+
-# yD+q88dSc+yfJsQdNuenGFowV7URqxcBeNV5HHEk2Wl1WieCS8QG0fvmIeJHdBuS
-# y2uIFt4OjwI8hJ2lh7cSnOQayIdImPQR6m+BtYDLfR+hwP0SegXsqZnM3JuuIuTr
-# 1wYcg/sI1SrPcb//DuIU/gRImdA6/vI6J1GI8E6oLM1fwYjhN9+4fB8cNtVxe2Ds
-# Sm/x3f/1x1p7p0P7ie+F5OUI4lfdg9lW9JBsaE9OjMdyN2lMqlXQinUFT86uhc3J
-# SMQWXpwn2kMTC6l+ZM8a9hkqIOv2Xb7TL39HBZvCM0b3igO1nx8ZcJbsav8tURir
-# FSKlUUaI1nQPJfshIpXDQVAJAQEvOCH/R1B2/JSV4zJfX9jfubC3cB7+NAFu3h/E
-# XRYtFeJ2ErYFuu9fRzE6fDj1ZdrOJzYkrixtpNCCmEIUDo/NJDfk5FjBT9XtZzeW
-# 5sfDsR2VvZRNdcRv3K1l8Jt6pGWKyA88ew5iX0f20RDE3dW0K97z9rl3PAYrzJcS
-# YSjjHWkozsoTLzJGNbwNjGksJedMIYww72EQBk+GqsxxWTUtRvdaMRhTvrdDRciz
-# n7kMcchxY+4Y5mF64QAFPzsxURHUVMwZTTYUq2o/B+KM60XAFEOMIvXv6jCZiNsz
-# uiGiqqj2yZwIYDkqDDasxvANkZ4LwP4B
+# FIjv07M3jbnMUGzUl1NANZ2AmCR+MA0GCSqGSIb3DQEBAQUABIICACreQDcnlVDS
+# ThT0PYyVVapAAeyg82y2nhc7d4UGX++8C6XCiehpxSOiDonvQdL3WaIQzaGiuszR
+# 0rvfEb/QLBjr5AkToOYYIQdIBSxfIiP2h3J8cTg2sKyeZNYr39n/Ynuh/nY+Ao89
+# hFfyZy8WE8f6L+4kba5dG7Bwhx0feip4QWtlRK/nZfrU4xKsZcfLr4eRRM9JNpkV
+# 9H8j8DGyuyijtzXI2HGZEFlC5j1oZ/ZCJZIKcnUxHKQYm9oaBGBvHVS0ePAhW0bs
+# ckS72i3r8lZsBtF9ckBR98gz25SUcxjAtHzlLL75BH8QlUatPaq7FLEAsf5OjS+1
+# ibVvIypgGZ34bF6Q41N18Bf5AHEEK2Fjmi4P42xeVl5PyYtBFahEzem+JjNjJZtt
+# qktWRvV4wtp0mNTuuOQXuuynoxgURxU1sVTYgciwjgBI3cBgo/jWHNtRggWlwnEV
+# UuCbA6KBrzcrqPh2DXc3yRWVGirVY+l8DOQQrVaH1jwuxmnBLKIbG4GpFm2BGxRg
+# z4CySP0+j8K2AaSJx9yMAneHMX3MRMFkpTXN2bl3IHkNM5OR5cSLr6fxFLcrxFE5
+# 6avRu8B5CoIxBZcQ4Y+sQcgal50SzCweaCVd9xO9bKsDXq/d7xXX2rSqpCeP2h9f
+# w/ZXLJwCwoRHwPhW4N7JTm1MrBiHcvYA
 # SIG # End signature block

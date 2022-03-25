@@ -1,13 +1,26 @@
+If you don't usually run scripts, you'll need to run [PowerShell](https://docs.microsoft.com/en-us/learn/modules/introduction-to-powershell/): WinKey+R, type powershell, hit Enter.  
+In the taskbar at screen bottom, right-click the blue icon with >_ on it, choose 'Run as Administrator'.
+Then at the console prompt (PS C:\Users\username>), type **Set-ExecutionPolicy AllSigned**, hit Enter.  
+Then type Y, and hit Enter to confirm. You can now close the second (Administrator titled) window.  
+The above allows this script to run, and requires all scripts that you run to be [code signed](https://blog.devgenius.io/powershell-code-signing-fc6086aeb61e?gi=8e073d4477a7),  
+which provides content validation, and is the most restrictive PowerShell execution policy available.  
+  
+Then pick either GitHub or the PS Gallery option below to copy or install from. Both do the same thing.  
+The new task can be renamed and rescheduled to retrigger and archive the same subreddits monthly, etc.  
+If the running task is ended manually (Right-click > End), you will need to manually kill the orphaned python process in Task Manager (CTRL+ALT+DEL), or simply reboot before retrying.  
+The finished HTML archives and ZIP path are in the task description, and the end of the transcript.  
+  
 ## GitHub Example Usage  
 1) PS> Invoke-WebRequest -URI https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/New-SubredditHTMLArchive.ps1 -OutFile .\New-SubredditHTMLArchive.ps1  
 2) PS> .\New-SubredditHTMLArchive.ps1 -Subreddit 'PowerShell' -InstallPackages  
-3) PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'HackRF','GNURadio','SRAWeekend','Onions' -Background  
+3) PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'HackRF','GNURadio','SRAWeekend' -Background  
   
 ## PowerShell Gallery Example Usage  
-1) PS> Install-Script -Name New-SubredditHTMLArchive  
-2) PS> New-SubredditHTMLArchive.ps1 -Subreddit 'DataHoarder' -InstallPackages  
-3) PS> New-SubredditHTMLArchive.ps1 -Subreddits (Get-Content "$($env:USERPROFILE)\Desktop\subs.txt")  
-4) PS> Update-Script -Name New-SubredditHTMLArchive  
+2) PS> Install-Script -Name New-SubredditHTMLArchive  
+3) PS> New-SubredditHTMLArchive.ps1 -Subreddit 'DataHoarder' -InstallPackages  
+4) PS> New-SubredditHTMLArchive.ps1 -Subreddits (Get-Content "$($env:USERPROFILE)\Desktop\subs.txt")  
+5) PS> New-SubredditHTMLArchive.ps1 -Subreddits 'netsec','neuroscience','homelab','Onions' -Background  
+6) PS> Update-Script -Name New-SubredditHTMLArchive  
   
 ## Comment Based Help  
 See: [PSScriptInfo comment header breaking 'Get-Help .\Script.ps1 -Full'](https://stackoverflow.com/questions/71579241/powershell-gallery-psscriptinfo-comment-header-breaking-get-help-myscriptname/71579958#71579958)  
@@ -27,8 +40,6 @@ Then seconds later, that created task will run, and by default will pop up an in
 If run with the -Background switch parameter, you will instead see the path to the transcript log:  
   
 ![Background Task Screenshot](./screenshots/screenshotBackground.png "Background Task Screenshot")
-  
-The finished HTML archives and ZIP path are in the task description, and the end of the transcript.  
   
 ## Added features since initial release  
 - Missing dependency package installation with the new -InstallPackages parameter.
