@@ -10,19 +10,21 @@ The new task can be renamed and rescheduled to retrigger and archive the same su
 If the running task is ended manually (Right-click > End), you will need to manually kill the orphaned python process in Task Manager (CTRL+ALT+DEL), or simply reboot before retrying.  
 The finished HTML archives and ZIP path are in the task description, and the end of the transcript.  
   
-## GitHub Example Usage  
+## GitHub: Example Usage  
 1) PS> Invoke-WebRequest -URI https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/New-SubredditHTMLArchive.ps1 -OutFile .\New-SubredditHTMLArchive.ps1  
 2) PS> .\New-SubredditHTMLArchive.ps1 -Subreddit 'PowerShell' -InstallPackages  
 3) PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'HackRF','GNURadio','SRAWeekend' -Background  
   
-## PowerShell Gallery Example Usage  
+## PowerShell Gallery: Install  
 1) PS> Install-Script -Name New-SubredditHTMLArchive  
 2) PS> New-SubredditHTMLArchive.ps1 -Subreddit 'DataHoarder' -InstallPackages  
 3) PS> New-SubredditHTMLArchive.ps1 -Subreddits (Get-Content "$($env:USERPROFILE)\Desktop\subs.txt")  
-4) PS> New-SubredditHTMLArchive.ps1 -Subreddits 'netsec','neuroscience','homelab','Onions' -Background  
-5) PS> Update-Script -Name New-SubredditHTMLArchive  
   
-## Comment Based Help  
+## PowerShell Gallery: Update  
+1) PS> Update-Script -Name New-SubredditHTMLArchive  
+2) PS> New-SubredditHTMLArchive.ps1 -Subreddits 'netsec','neuroscience','homelab','Onions' -Background  
+  
+## Comment Based Help (Script Header)  
 See: [PSScriptInfo comment header breaking 'Get-Help .\Script.ps1 -Full'](https://stackoverflow.com/questions/71579241/powershell-gallery-psscriptinfo-comment-header-breaking-get-help-myscriptname/71579958#71579958)  
 1) PS> Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process  
 2) PS> Get-Content .\New-SubredditHTMLArchive.ps1 | Select -Skip 7 | Set-Content "$($env:temp)\temp.ps1"  
