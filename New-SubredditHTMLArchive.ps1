@@ -1,5 +1,5 @@
 ﻿<#PSScriptInfo
-.VERSION 2.1.2
+.VERSION 2.1.3
 .GUID 3ae5d1f9-f5be-4791-ab41-8a4c9e857e9c
 .AUTHOR mbarr564@protonmail.com
 .PROJECTURI https://github.com/mbarr564/New-SubredditHTMLArchive
@@ -47,7 +47,7 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Thursday, March 24, 2022 9:30:16 PM
+    Last update: Friday, March 25, 2022 3:50:53 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
@@ -83,7 +83,7 @@ else
 }
 
 ## Relaunch script as Scheduled Task
-if (-not((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}).State -eq 'Running'))
+if (-not((Get-ScheduledTask | Where-Object {$_.TaskPath -eq "\$scriptName\"}).State -eq 'Running')) #do not check task name, as it can be renamed and rescheduled
 {
     ## Check / create Task Scheduler script name folder
     try {$scheduleObject = (New-Object -ComObject Schedule.Service); $scheduleObject.Connect(); $rootScheduleFolder = $scheduleObject.GetFolder('\')} catch {throw "Error: failed to connect to scheduling service!"}
@@ -122,12 +122,13 @@ if (-not((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -a
 else
 {
     ## This script is already running as scheduled task.. is this instance the task?
-    [datetime]$taskLastRunTime = (((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}) | Get-ScheduledTaskInfo).LastRunTime)
-    [datetime]$taskTriggerTime = ((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}).Triggers.StartBoundary) #this won't work if user reruns task later, but will if they set a new trigger.. added because LastRunTime wasn't being reliable
+    [string]$runningTaskName = ((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.State -eq 'Running')}).TaskName)
+    [datetime]$taskLastRunTime = (((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq "$runningTaskName")}) | Get-ScheduledTaskInfo).LastRunTime) #do not check task name here either, as it can be renamed and rescheduled
+    [datetime]$taskTriggerTime = ((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq "$runningTaskName")}).Triggers.StartBoundary) #this won't work if user reruns task later, but will if they set a new trigger.. added because LastRunTime wasn't being reliable
     if (($taskLastRunTime -lt ((Get-Date).AddSeconds(-45))) -or ($taskTriggerTime -lt ((Get-Date).AddSeconds(-5)))) #for reasons unknown, the spawned task's LastRunTime is about 30 seconds before the task was even created..
     {
         Write-Warning "Detected running script task! Last run: $($taskLastRunTime). Triggered: $($taskTriggerTime). Exiting ..."
-        Write-Warning "Task Scheduler > Task Scheduler Library > $scriptName > $taskName"
+        Write-Warning "Task Scheduler > Task Scheduler Library > $scriptName > $runningTaskName"
         Start-Process 'taskschd.msc'
         exit #exit so any background process is not interrupted
     }
@@ -138,7 +139,7 @@ else
         ## Interactive console rename and resize attempt
         Write-Host "Task running under interactive logon type, updating title and resizing console window ..." -ForegroundColor Cyan
         Write-Output "`n`0`n`0`n`0`n"; if ($Subreddit){Write-Output "`0`n"} #skip lines (with new lines and nulls) so the progress banner doesn't cover interactive console output ..and skip one more for a single subreddit (because no completion time estimate)
-        $host.UI.RawUI.WindowTitle = "Windows PowerShell - Task Scheduler > Task Scheduler Library > $scriptName > RunOnce" #based on size 16 Consolas font (right-click powershell.exe window title > properties > Font tab)
+        $host.UI.RawUI.WindowTitle = "Windows PowerShell - Task Scheduler > Task Scheduler Library > $scriptName > $runningTaskName" #based on size 16 Consolas font (right-click powershell.exe window title > properties > Font tab)
         if ($host.UI.RawUI.MaxPhysicalWindowSize.Width -ge 174){try {$host.UI.RawUI.BufferSize = New-Object -TypeName System.Management.Automation.Host.Size -ArgumentList 174, 9001} catch {}} #have to set buffer first, and then window size
         if ($host.UI.RawUI.MaxPhysicalWindowSize.Width -ge 174){try {$host.UI.RawUI.WindowSize = New-Object -TypeName System.Management.Automation.Host.Size -ArgumentList 174, 30} catch {}} #174 is max width on 1080p displays -- no wrapping with longest subreddit names
     }
@@ -512,8 +513,8 @@ else
 # SIG # Begin signature block
 # MIIVpAYJKoZIhvcNAQcCoIIVlTCCFZECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU0afQP5LRDnUjQEo6/ej/r1eD
-# gkugghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUVu4YBtW5ruW6IBonYLAdlR3Z
+# CsegghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -614,16 +615,16 @@ else
 # U2lnbmluZyBDQSBSMzYCEFXW/fyTR4LO3Cqs0hOoVDAwCQYFKw4DAhoFAKB4MBgG
 # CisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcC
 # AQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYE
-# FIjv07M3jbnMUGzUl1NANZ2AmCR+MA0GCSqGSIb3DQEBAQUABIICACreQDcnlVDS
-# ThT0PYyVVapAAeyg82y2nhc7d4UGX++8C6XCiehpxSOiDonvQdL3WaIQzaGiuszR
-# 0rvfEb/QLBjr5AkToOYYIQdIBSxfIiP2h3J8cTg2sKyeZNYr39n/Ynuh/nY+Ao89
-# hFfyZy8WE8f6L+4kba5dG7Bwhx0feip4QWtlRK/nZfrU4xKsZcfLr4eRRM9JNpkV
-# 9H8j8DGyuyijtzXI2HGZEFlC5j1oZ/ZCJZIKcnUxHKQYm9oaBGBvHVS0ePAhW0bs
-# ckS72i3r8lZsBtF9ckBR98gz25SUcxjAtHzlLL75BH8QlUatPaq7FLEAsf5OjS+1
-# ibVvIypgGZ34bF6Q41N18Bf5AHEEK2Fjmi4P42xeVl5PyYtBFahEzem+JjNjJZtt
-# qktWRvV4wtp0mNTuuOQXuuynoxgURxU1sVTYgciwjgBI3cBgo/jWHNtRggWlwnEV
-# UuCbA6KBrzcrqPh2DXc3yRWVGirVY+l8DOQQrVaH1jwuxmnBLKIbG4GpFm2BGxRg
-# z4CySP0+j8K2AaSJx9yMAneHMX3MRMFkpTXN2bl3IHkNM5OR5cSLr6fxFLcrxFE5
-# 6avRu8B5CoIxBZcQ4Y+sQcgal50SzCweaCVd9xO9bKsDXq/d7xXX2rSqpCeP2h9f
-# w/ZXLJwCwoRHwPhW4N7JTm1MrBiHcvYA
+# FPOj+MOWpdjMwQcWhey6xafXlW0WMA0GCSqGSIb3DQEBAQUABIICAEDqHVUGs+/I
+# MUl4jXkNaNdIwVMBZnBnzz5NWd6DdpQ9ZD7x/lxP1z8/cqo8hVbtcCfP2R1Vab91
+# oFriVKMglhcj2iBGr86qZ9i35Ls7zUFoKeRTF9avrbt8mU5pv5xZec6Sv1LjTWko
+# Zf7o8iEd0abxhyL4XZARdBp9ZY7rSyZAtAO1P4SU/P0V9qM/8RK6EXNDvf/r5hjV
+# f1KMYPEr4AZSI6TMZQaLiFw8ZMiirNhnM2Mc861yx7McfN0HzjMhF2Lblwlg87SP
+# Xaq68t/8ram0wqFqzLkE8ZP58Q/Hvg7ig1LvgG6RTLfYH+2AuUumJBj5CaqtyENe
+# 6kwvsJYOt4bTU8P03HzfiC638kjjVBwQXqVOff19DCLjj70gQKqaK4PZ8thBctxd
+# JNSd8Uim9Hldl4Rb1E/Z3JUa+iRB65zbg7zJ4JzEe7H/zXA1CJRYyhigj1jdbbVm
+# ByYZuaWip4OL3QbU01MgT1c/mGX9tWPwoKdFsC79HvR2aK+RHgRZZeDvkZM/77SA
+# wtkcr8t+LpqB3KoawR9dZKu85CNNV8WvXUrgaqw/FDHfGAF6mU5QaASPpe2QbC8j
+# /Xhcie+BA7MQhCauraJfBG2WRClqlUPTAPMUcHVnYGXwbKvdXIvj8v0vlsR1qxR3
+# wxB5Pwg13Hrx3pyXWw6O/A9RGgktEC8/
 # SIG # End signature block
