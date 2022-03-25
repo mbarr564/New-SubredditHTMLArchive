@@ -16,11 +16,11 @@ The finished HTML archives and ZIP path are in the task description, and the end
 3) PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'HackRF','GNURadio','SRAWeekend' -Background  
   
 ## PowerShell Gallery Example Usage  
-2) PS> Install-Script -Name New-SubredditHTMLArchive  
-3) PS> New-SubredditHTMLArchive.ps1 -Subreddit 'DataHoarder' -InstallPackages  
-4) PS> New-SubredditHTMLArchive.ps1 -Subreddits (Get-Content "$($env:USERPROFILE)\Desktop\subs.txt")  
-5) PS> New-SubredditHTMLArchive.ps1 -Subreddits 'netsec','neuroscience','homelab','Onions' -Background  
-6) PS> Update-Script -Name New-SubredditHTMLArchive  
+1) PS> Install-Script -Name New-SubredditHTMLArchive  
+2) PS> New-SubredditHTMLArchive.ps1 -Subreddit 'DataHoarder' -InstallPackages  
+3) PS> New-SubredditHTMLArchive.ps1 -Subreddits (Get-Content "$($env:USERPROFILE)\Desktop\subs.txt")  
+4) PS> New-SubredditHTMLArchive.ps1 -Subreddits 'netsec','neuroscience','homelab','Onions' -Background  
+5) PS> Update-Script -Name New-SubredditHTMLArchive  
   
 ## Comment Based Help  
 See: [PSScriptInfo comment header breaking 'Get-Help .\Script.ps1 -Full'](https://stackoverflow.com/questions/71579241/powershell-gallery-psscriptinfo-comment-header-breaking-get-help-myscriptname/71579958#71579958)  
