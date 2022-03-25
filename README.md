@@ -1,5 +1,5 @@
 If you don't usually run scripts, you'll need to run [PowerShell](https://docs.microsoft.com/en-us/learn/modules/introduction-to-powershell/): WinKey+R, type powershell, hit Enter.  
-In the taskbar at screen bottom, right-click the blue icon with >_ on it, choose 'Run as Administrator'.
+In the taskbar at screen bottom, right-click the blue icon with >_ on it, choose 'Run as Administrator'.  
 Then at the console prompt (PS C:\Users\username>), type **Set-ExecutionPolicy AllSigned**, hit Enter.  
 Then type Y, and hit Enter to confirm. You can now close the second (Administrator titled) window.  
 The above allows this script to run, and requires all scripts that you run to be [code signed](https://blog.devgenius.io/powershell-code-signing-fc6086aeb61e?gi=8e073d4477a7),  
