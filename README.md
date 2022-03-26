@@ -63,3 +63,4 @@ If run with the -Background switch parameter, you will instead see the path to t
 - Updated hang detection to not trigger if output JSON/media folder is growing by 1GB/4hrs.
 - Checks BDFR logs for repeating errors from a submission ID, and excludes those IDs on retry.
 - Now passes partial subreddit JSON clones to BDFR-HTML instead of terminating the script.
+- Updated in v2.1.3 to allow renamed/rescheduled tasks to function as intended.
