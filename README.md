@@ -8,7 +8,8 @@ which provides content validation, and is the most restrictive PowerShell execut
 Then pick either GitHub or the PS Gallery option below to copy or install from.  
 Both do the same thing, and you can copy/paste from this README into PowerShell.  
   
-The suggested subreddit 'TestSubredditA' is a real subreddit name that takes just seconds to archive, and should be used as the default when installing packages on the first script run. The script is then expected to be supplied with a list of subreddit names, usually along with the -Background parameter, so you can lock your screen while the script continues to run.  
+The suggested subreddit 'TestSubredditA' is a real subreddit name that takes just seconds to archive, and should be used as the default when installing packages on the first script run.  
+The script is then expected to be supplied with a list of subreddit names, usually along with the -Background parameter, so you can lock your screen while the script continues to run.  
   
 The Task Scheduler can be accessed by pressing the Windows key, typing the partial name 'Task S', then clicking 'Task Scheduler' when it pops up, or: press WinKey+R, type **taskschd.msc**, hit Enter.  
 The new task can be renamed (via right-click > Export..., then Actions > Import Task...) and rescheduled to retrigger, archiving the same subreddits in the description monthly, etc. If the task name is unchanged, it will be overwritten when the script is run from the command line again, such as when you update the script. Note that if the running task is ended manually (right-click > End), you will need to manually kill the orphaned python process in Task Manager (CTRL+ALT+DEL), or simply reboot before retrying.  
