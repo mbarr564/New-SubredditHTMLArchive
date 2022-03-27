@@ -25,6 +25,7 @@ The finished HTML archives and ZIP path are in the task description, and the end
 1) PS> Install-Script -Name New-SubredditHTMLArchive  
 2) PS> New-SubredditHTMLArchive.ps1 -Subreddit 'TestSubredditA' -InstallPackages  
 3) PS> New-SubredditHTMLArchive.ps1 -Subreddits (Get-Content "$($env:USERPROFILE)\Desktop\subs.txt")  
+  
 Script path: ($env:path).Split(';') | % {if (Test-Path "$_\New-SubredditHTMLArchive.ps1"){start "$_"}}  
   
 ## PowerShell Gallery: Update  
