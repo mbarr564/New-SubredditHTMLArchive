@@ -1,5 +1,5 @@
 ﻿<#PSScriptInfo
-.VERSION 2.1.3
+.VERSION 2.1.4
 .GUID 3ae5d1f9-f5be-4791-ab41-8a4c9e857e9c
 .AUTHOR mbarr564@protonmail.com
 .PROJECTURI https://github.com/mbarr564/New-SubredditHTMLArchive
@@ -11,7 +11,6 @@
     By default, creates root 'New-SubredditHTMLArchive' output folder and under your %USERPROFILE% ($env:USERPROFILE) Documents folder.
     Runs itself as a scheduled task as the current user, as an interactive console by default. The task can be run as a background task with the -Background parameter, allowing use of the lock screen.
     The reddit API returns a maximum of 1000 posts per BDFR pull, so only the newest 1000 posts will be included: https://github.com/reddit-archive/reddit/blob/master/r2/r2/lib/db/queries.py
-    Script download URL from web browsers, so the code signature still works (Save As): https://raw.githubusercontent.com/mbarr564/powershell/master/New-SubredditHTMLArchive.ps1
 .DESCRIPTION
     If you already have Python 3.9+, Git 2+, and GitHub CLI 2+ installed, you can skip this section.
     This script does NOT require administrator privileges to run, or to install the Python modules, WITHOUT the -InstallPackages parameter.
@@ -47,7 +46,7 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','DataHoarder','AtheistHavens','Onions' -Background
 .NOTES
-    Last update: Friday, March 25, 2022 3:50:53 PM
+    Last update: Sunday, April 3, 2022 6:52:47 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,100)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background)
@@ -65,8 +64,7 @@ if (([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::
 if ($Background){$logonType = 'S4U'} else {$logonType = 'Interactive'} #default Interactive (for viewable console window), -Background for S4U (non-interactive task). Not supported: Password (not tested), InteractiveOrPassword (not tested), Group (no profile), ServiceAccount (no profile), None (no profile)
 if (-not(Test-Path (Split-Path $rootFolder -Parent) -PathType Container)){throw "Error: root output path doesn't exist or not a directory: $(Split-Path $rootFolder -Parent)"}
 foreach ($folderName in @('JSON','HTML','ZIP','logs')){if (-not(Test-Path "$rootFolder\$folderName" -PathType Container)){New-Item -Path "$rootFolder\$folderName" -ItemType Directory -Force -ErrorAction Stop | Out-Null}}
-if ($InstallPackages -and $Background){throw "Error: the -InstallPackages parameter cannot be used in conjunction with the -Background parameter! Use the -InstallPackages switch by itself first, then use the -Background switch on the next script run."}
-if ($Subreddit -and $Background){throw "Error: the -Background parameter cannot be used for single subreddit archival! Time for a single subreddit is 1-3 hours for a maximum of 1000 records."}
+if ($InstallPackages -and $Background){throw 'Error: the -InstallPackages parameter cannot be used in conjunction with the -Background parameter! Use the -InstallPackages switch by itself first, then use the -Background switch on the next script run.'}
 if ($Subreddits)
 {
     [string[]]$badNames = @(); $Subreddits = $Subreddits | Select-Object -Unique; $Subreddits | ForEach-Object {if ($_ -notmatch "^[A-Z0-9_]{2,21}$"){$badNames += $_}}
@@ -93,14 +91,14 @@ if (-not((Get-ScheduledTask | Where-Object {$_.TaskPath -eq "\$scriptName\"}).St
     [string]$scriptArgs = ''
     if ($Subreddits){$scriptArgs = " -Subreddits '$($Subreddits -join "','")'"}
     elseif ($Subreddit){$scriptArgs = " -Subreddit $Subreddit"}
-    if ($InstallPackages){$scriptArgs += " -InstallPackages"}
-    if ($Background){$scriptArgs += " -Background"}
+    if ($InstallPackages){$scriptArgs += ' -InstallPackages'}
+    if ($Background){$scriptArgs += ' -Background'}
 
     ## Build splatted scheduled task parameters
     $taskArguments = @{
         TaskName = $taskName
         TaskPath = $scriptName
-        Trigger = (New-ScheduledTaskTrigger -At ((Get-Date).AddSeconds(3)) -Once)
+        Trigger = (New-ScheduledTaskTrigger -At ((Get-Date).AddSeconds(5)) -Once)
         Action = (New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "$($PSCommandPath)$scriptArgs") #space before $scriptArgs included already in string build
         Settings = (New-ScheduledTaskSettingsSet -DisallowDemandStart -ExecutionTimeLimit (New-TimeSpan -Seconds 0)) #1) must be run with a new trigger datetime, instead of right-clicking the task and choosing run. 2) PT0S equiv for indefinite/disabled run time
         Principal = (New-ScheduledTaskPrincipal -UserID "$($env:COMPUTERNAME)\$($env:USERNAME)" -LogonType $logonType -RunLevel Limited)
@@ -110,20 +108,20 @@ if (-not((Get-ScheduledTask | Where-Object {$_.TaskPath -eq "\$scriptName\"}).St
 
     ## Register scheduled task, handle access errors, display log and zip paths
     if ($isAdmin){$foreColor = 'Yellow'} else {$foreColor = 'Cyan'}
-    Write-Host "$($isAdmin)Creating task 'Task Scheduler Library > $scriptName > $taskName' with '$logonType' logon type ..." -ForegroundColor $foreColor #https://stackoverflow.com/questions/13965997/powershell-set-a-scheduled-task-to-run-when-user-isnt-logged-in
+    Write-Host "$($isAdmin)Creating task 'Task Scheduler Library > $scriptName > $taskName' with $logonType logon type ..." -ForegroundColor $foreColor #https://stackoverflow.com/questions/13965997/powershell-set-a-scheduled-task-to-run-when-user-isnt-logged-in
     try {Register-ScheduledTask @taskArguments | Out-Null} #can trigger UAC admin prompt, which will rerun script as admin to create the task, if task creation fails.. the created task will NOT run as admin
     catch [Microsoft.Management.Infrastructure.CimException]{if (-not($isAdmin)){Start-Process 'powershell.exe' -ArgumentList "$($PSCommandPath)$scriptArgs" -Verb RunAs -Wait} else {throw $error[0]}} #access denied.. rerun this script with same args, as admin (will also trigger if overwriting task with S4U LogonType)
     catch {throw $error[0]} #S4U type will trigger UAC admin prompt to create the task.. or.. user can create as Interactive, and manually change the 'Security options' to 'Run whether user is logged on or not', which does NOT trigger a UAC prompt.
     if (Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq $taskName)}){if ($Background -and (-not($isAdmin))){Write-Host "Transcript logging for successfully spawned Task Scheduler background task (taskschd.msc):`n$transcriptPath" -ForegroundColor Cyan}}
-    else {throw "Error: failed to create scheduled task!"}
+    else {throw 'Error: failed to create scheduled task!'}
     if ($isAdmin){Start-Sleep -Seconds 1} #if running as admin, pause a moment so the user can see the administrator console output
     exit
 }
 else
 {
     ## This script is already running as scheduled task.. is this instance the task?
-    [string]$runningTaskName = ((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.State -eq 'Running')}).TaskName)
-    [datetime]$taskLastRunTime = (((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq "$runningTaskName")}) | Get-ScheduledTaskInfo).LastRunTime) #do not check task name here either, as it can be renamed and rescheduled
+    [string]$runningTaskName = ((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.State -eq 'Running')}).TaskName) #task name can be changed when rescheduled
+    [datetime]$taskLastRunTime = (((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq "$runningTaskName")}) | Get-ScheduledTaskInfo).LastRunTime)
     [datetime]$taskTriggerTime = ((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq "$runningTaskName")}).Triggers.StartBoundary) #this won't work if user reruns task later, but will if they set a new trigger.. added because LastRunTime wasn't being reliable
     if (($taskLastRunTime -lt ((Get-Date).AddSeconds(-45))) -or ($taskTriggerTime -lt ((Get-Date).AddSeconds(-5)))) #for reasons unknown, the spawned task's LastRunTime is about 30 seconds before the task was even created..
     {
@@ -201,11 +199,11 @@ if ($missingExes.count -gt 0)
         if ('gh.exe' -in $oldMissingExes)
         {
             Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Launching GitHub CLI authentication process ..."
-            $GitHubAuth = Start-Process "cmd.exe" -ArgumentList "/c gh auth login" -PassThru -Wait
+            $GitHubAuth = Start-Process 'cmd.exe' -ArgumentList '/c gh auth login' -PassThru -Wait
             if ($GitHubAuth.ExitCode -ne 0)
             {
                 Write-Host "[$(Get-Date -f HH:mm:ss.fff)] Error: exit code $($GitHubAuth.ExitCode). Relaunching GitHub CLI authentication process ..." -ForegroundColor Yellow
-                $GitHubAuthRetry = Start-Process "cmd.exe" -ArgumentList "/c gh auth login" -PassThru -Wait
+                $GitHubAuthRetry = Start-Process 'cmd.exe' -ArgumentList "/c gh auth login" -PassThru -Wait
                 if ($GitHubAuthRetry.ExitCode -ne 0){throw "[$(Get-Date -f HH:mm:ss.fff)] Error: exit code $($GitHubAuthRetry.ExitCode). Failed to authenticate new GitHub CLI install! Please manually run cmd.exe, and complete the GitHub authentication process: gh auth login"}
             }
         }
@@ -214,7 +212,7 @@ if ($missingExes.count -gt 0)
 }
 
 ## Check for Python modules BDFR and BDFR-HTML
-Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Checking for BDFR and BDFR-HTML Python modules ..."
+Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Checking for BDFR and BDFR-HTML Python modules ..." #todo: version check/update
 [bool]$bdfrInstalled = $false
 [bool]$bdfrhtmlInstalled = $false
 [string[]]$installedPythonModules = @((pip list --disable-pip-version-check) | Where-Object {$_ -match "^[A-Z0-9-]{3,18}.*[0-9]{1,4}`.[0-9]{1,2}(`.[0-9]{1,2})?$"}) #strip name:value header
@@ -307,13 +305,13 @@ foreach ($Sub in $Subreddits)
         Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Using BDFR to clone subreddit to disk in JSON ..."
         [string]$global:logPath = "$rootFolder\logs\bdfr_$($Sub)_$(Get-Date -f yyyyMMdd_HHmmss).log.txt" #global so these variables don't disappear each time the function exits
         Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Status (CTRL+C to retry): $logPath"
-        if ($IncludeIDsFilePath){$global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --include-id-file $IncludeIDsFilePath --verbose --log $logPath" -WindowStyle Hidden -PassThru}
-        elseif ($ExcludeIDs){$global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --exclude-id $($ExcludeIDs -join ' --exclude-id ') --verbose --log $logPath" -WindowStyle Hidden -PassThru}
-        else {$global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback --verbose --log $logPath" -WindowStyle Hidden -PassThru}
+        if ($IncludeIDsFilePath){$global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --include-id-file $IncludeIDsFilePath --verbose --log $logPath" -WindowStyle Hidden -PassThru}
+        elseif ($ExcludeIDs){$global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --exclude-id $($ExcludeIDs -join ' --exclude-id ') --verbose --log $logPath" -WindowStyle Hidden -PassThru}
+        else {$global:bdfrProcess = Start-Process "python.exe" -ArgumentList "-m bdfr clone $rootFolder\JSON --subreddit $Sub --verbose --log $logPath" -WindowStyle Hidden -PassThru} #--disable-module Youtube --disable-module YoutubeDlFallback 
         
         ## Custom CTRL+C handling and timeout detection
         [int]$lastTotalCloneOutputGB = 0
-        [bool]$global:CTRLCUsedOnce = $false; [bool]$global:cloneHangDetected = $false
+        [bool]$global:CTRLCUsedOnce = $false; [bool]$global:cloneHangDetected = $false; [bool]$global:outputFolderGrowth = $false
         if (-not($Background)){[console]::TreatControlCAsInput = $true} #change the default behavior of CTRL+C so that the script can intercept and use it versus just terminating the script: https://blog.sheehans.org/2018/10/27/powershell-taking-control-over-ctrl-c/
         if (-not($Background)){Start-Sleep -Seconds 1} #sleep for 1 second and then flush the key buffer so any previously pressed keys are discarded and the loop can monitor for the use of CTRL+C. The sleep command ensures the buffer flushes correctly
         if (-not($Background)){$host.UI.RawUI.FlushInputBuffer()}
@@ -338,6 +336,7 @@ foreach ($Sub in $Subreddits)
                     Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Timeout reached, but timer has been reset: output folder has grown by $($totalCloneOutputGB - $lastTotalCloneOutputGB)GB!"
                     $cloneStopwatch.Restart() #restart stopwatch from 0 to allow another 4 hours
                     [int]$lastTotalCloneOutputGB = $totalCloneOutputGB #continue if output folder size is increasing by > 1GB/4hrs
+                    $global:outputFolderGrowth = $true #prevent retries.. and it is extremely unlikely an interactive console has been running for so long, so that CTRL+C case is NYI below
                 }
                 else {$global:cloneHangDetected = $true; break} #over 4 hours have passed, and output folder has not grown by atleast 1GB, exit while loop, and immediately re-attempt (also triggers when the completed process fails to exit, but does NOT retry in that case)
             }
@@ -388,7 +387,7 @@ foreach ($Sub in $Subreddits)
     [bool]$prawError = $false
     [bool]$cloneSuccessful = $false
     [string[]]$errorSubmissionIDs = @()
-    while (($triesLeft -gt 0) -and (-not($cloneSuccessful)))
+    while (($triesLeft -gt 0) -and (-not($cloneSuccessful)) -and (-not($outputFolderGrowth)))
     {
         $logLastLine = Get-Content $logPath -Tail 1 -ErrorAction SilentlyContinue
         if (-not($logLastLine -like "*INFO] - Program complete"))
@@ -435,7 +434,7 @@ foreach ($Sub in $Subreddits)
     {
         ## BDFR: Clone did not complete but process successfully retrieved submissions anyway
         if ($includeIDs){$addlParams = "--include-id-file $includeIDsFilePath "} elseif ($excludeIDs){$addlParams = "--exclude-id $($ExcludeIDs -join ' --exclude-id ') "} else {$addlParams = ''} #so the error contains the full command string even with exclude/include ID params
-        Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Unrecoverable errors: command: 'python.exe -m bdfr clone $rootFolder\JSON --subreddit $Sub --disable-module Youtube --disable-module YoutubeDlFallback $($addlParams)--verbose --log $logPath' returned exit code '$($bdfrProcess.ExitCode)'! This was the final retry attempt." -ForegroundColor Yellow
+        Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Unrecoverable errors: command: 'python.exe -m bdfr clone $rootFolder\JSON --subreddit $Sub $($addlParams)--verbose --log $logPath' returned exit code '$($bdfrProcess.ExitCode)'! This was the final retry attempt." -ForegroundColor Yellow
         [int]$retrievedSubmissions = (Get-ChildItem "$rootFolder\JSON\$Sub" -Recurse -Include "*.json" | Measure-Object).Count
         Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Processing partial clone of $retrievedSubmissions retrieved submissions ..." -ForegroundColor Yellow
     }
@@ -451,7 +450,7 @@ foreach ($Sub in $Subreddits)
     (Get-Content "$rootFolder\HTML\$Sub\index.html").Replace("<title>BDFR Archive</title>","<title>/r/$Sub Archive</title>") | Set-Content "$rootFolder\HTML\$Sub\index.html" -Encoding 'UTF8' -Force
     
     ## Delete media files over 2MB threshold
-    Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Deleting media folder files over 2MB ..."
+    Write-Output "[$(Get-Date -f HH:mm:ss.fff)][$Sub] Deleting HTML media folder files over 2MB ..."
     Get-ChildItem -Path "$rootFolder\HTML\$Sub\media" | Where-Object {(($_.Length)/1MB) -gt 2} | ForEach-Object {Remove-Item -LiteralPath "$($_.FullName)" -ErrorAction SilentlyContinue}
 
     ## Loop end
@@ -488,7 +487,7 @@ else
     ## Generate master index.html for all archived subreddits
     [string[]]$indexContents = @(); $endDateTime = (Get-Date); $timeElapsed = $endDateTime - $startDateTime
     Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Generating master index.html for all archives ..."
-    $indexContents += "<html><head><style>body {background-color: rgb(127, 127, 127);}</style><title>BDFR Archive Index</title></head><body><ul>"
+    $indexContents += '<html><head><style>body {background-color: rgb(127, 127, 127);}</style><title>BDFR Archive Index</title></head><body><ul>'
     foreach ($subredditDirectoryName in @((Get-ChildItem $zipOutputPath -Directory).Name))
     {
         $indexContents += "<li><a href=`"./$($subredditDirectoryName)/index.html`"><h2>/r/$subredditDirectoryName</h2></a></li>" #unordered list
@@ -504,7 +503,7 @@ else
 
     ## Compress ZIP & Open output
     Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Compressing everything into a ZIP archive ..."
-    Compress-Archive -Path "$zipOutputPath\*" -Destination "$zipOutputPath\indexed_HTML_archive_of_$($Subreddits.count)_subreddits_$(Get-Date -f yyyy-MM-dd).zip"
+    Compress-Archive -Path "$zipOutputPath\*" -Destination "$zipOutputPath\$(Get-Date -f yyyy-MM-dd)_indexed_HTML_archive_of_$($Subreddits.count)_subreddits.zip"
     Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Finished! Time elapsed: $(($timeElapsed.TotalHours).ToString("###.##")) hours"
     if (-not($Background)){Start-Process $zipOutputPath}
     else {Write-Output "[$(Get-Date -f HH:mm:ss.fff)] Indexed archives and ZIP file output path:`n$zipOutputPath"}
@@ -513,8 +512,8 @@ else
 # SIG # Begin signature block
 # MIIVpAYJKoZIhvcNAQcCoIIVlTCCFZECAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUVu4YBtW5ruW6IBonYLAdlR3Z
-# CsegghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUmFKC5MXXNNhDeJbzSXOkjamX
+# 8s2gghIFMIIFbzCCBFegAwIBAgIQSPyTtGBVlI02p8mKidaUFjANBgkqhkiG9w0B
 # AQwFADB7MQswCQYDVQQGEwJHQjEbMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHDAdTYWxmb3JkMRowGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEh
 # MB8GA1UEAwwYQUFBIENlcnRpZmljYXRlIFNlcnZpY2VzMB4XDTIxMDUyNTAwMDAw
@@ -615,16 +614,16 @@ else
 # U2lnbmluZyBDQSBSMzYCEFXW/fyTR4LO3Cqs0hOoVDAwCQYFKw4DAhoFAKB4MBgG
 # CisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcC
 # AQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYE
-# FPOj+MOWpdjMwQcWhey6xafXlW0WMA0GCSqGSIb3DQEBAQUABIICAEDqHVUGs+/I
-# MUl4jXkNaNdIwVMBZnBnzz5NWd6DdpQ9ZD7x/lxP1z8/cqo8hVbtcCfP2R1Vab91
-# oFriVKMglhcj2iBGr86qZ9i35Ls7zUFoKeRTF9avrbt8mU5pv5xZec6Sv1LjTWko
-# Zf7o8iEd0abxhyL4XZARdBp9ZY7rSyZAtAO1P4SU/P0V9qM/8RK6EXNDvf/r5hjV
-# f1KMYPEr4AZSI6TMZQaLiFw8ZMiirNhnM2Mc861yx7McfN0HzjMhF2Lblwlg87SP
-# Xaq68t/8ram0wqFqzLkE8ZP58Q/Hvg7ig1LvgG6RTLfYH+2AuUumJBj5CaqtyENe
-# 6kwvsJYOt4bTU8P03HzfiC638kjjVBwQXqVOff19DCLjj70gQKqaK4PZ8thBctxd
-# JNSd8Uim9Hldl4Rb1E/Z3JUa+iRB65zbg7zJ4JzEe7H/zXA1CJRYyhigj1jdbbVm
-# ByYZuaWip4OL3QbU01MgT1c/mGX9tWPwoKdFsC79HvR2aK+RHgRZZeDvkZM/77SA
-# wtkcr8t+LpqB3KoawR9dZKu85CNNV8WvXUrgaqw/FDHfGAF6mU5QaASPpe2QbC8j
-# /Xhcie+BA7MQhCauraJfBG2WRClqlUPTAPMUcHVnYGXwbKvdXIvj8v0vlsR1qxR3
-# wxB5Pwg13Hrx3pyXWw6O/A9RGgktEC8/
+# FPJ6UTPdHkgsqvNuVSKeIfdvYExTMA0GCSqGSIb3DQEBAQUABIICADfHMyuv4E+i
+# k0QOyKnL4TLMghtSdT2L7jqipahAZO1ETjsCR/IXbD6WjLOrUbFo1vujdBEvLxoo
+# GG+rgo9o7riZglm0uykTnXnK8xQqxwYs2YungYvuoX0VwiZFrZ6Es9RQEwyKtW5c
+# Q4Kx0P1V+qWyArVXV/nh677307u/QRG4czV7KCMo6GUiCm9GrEFyzGfbyDQ6+quP
+# CmNmCY+Rnu+KlkfSPfPbQtOpeMKtOVfW6pZM0RVrhOjEsQqrqwU5XH74Q8yNntur
+# Sy58tZYd/+QVl37/DH2RuVck5N39zPtrrsqWV8kuGg1mUp/XgRTaRNFdHhp9k+O6
+# OFewJO14OBXTbbg1yDIF3PKuBblAgIqkJiigQlNMj15TEnKixOWB2QWgHb10eSnz
+# pSdaSVARpHeNyzqlgfJvIJ8DDJYliLemKtH8B1ywTIZNv1e2p9I+D8t6Kb/yLKq1
+# dPAwPup+I7gslDd+OXugq+rj+mO/y3GukuD+R0beMlNXeL6m75/V8O7MfjiBpjUi
+# yv7RpoA/v8BsWVAU1vXn6PbvofWMZ6Fftl9qCqfr3GQNeFogWbrKkSnaT1LqCMvw
+# T+AyR4fah/K9vL8VTEYRYMou6wK7hGOKWY0yhztpxCbjloemr5l1x2amjqBUYrmb
+# uf+g+4gXagPZn6Ad5oo33rJnRIFTcDAr
 # SIG # End signature block
