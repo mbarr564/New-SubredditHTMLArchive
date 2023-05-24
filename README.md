@@ -1,4 +1,4 @@
-If you don't usually run scripts, I recommend you use the **Easy Setup Script** option below, which does installation for you.  
+If you don't usually run scripts, I recommend you use the **Easy Setup Script** below, which does installation for you.  
   
 Otherwise, you'll need to run [PowerShell](https://docs.microsoft.com/en-us/learn/modules/introduction-to-powershell/): WinKey+R, type **powershell**, hit Enter. Then in the taskbar along the screen bottom, right-click the blue icon with **>_** on it, and choose 'Run as Administrator'.  
 Then at the console prompt (PS C:\Users\username>), type **Set-ExecutionPolicy Unrestricted**, hit Enter.  
