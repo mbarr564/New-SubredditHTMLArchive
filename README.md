@@ -15,10 +15,11 @@ PS> ($env:path).Split(';') | % {if (Test-Path "$\_\New-SubredditHTMLArchive.ps1"
   
 The finished HTML archives and ZIP path are in the task description, and the end of the transcript.  
   
-## Easy Setup Script: 
-1) Click to open this link: https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/setup.cmd  
-2) Then once the link has opened in your browser, choose "File > Save Page As" (or CTRL+S), and choose your Desktop as the save location.  
-3) From your Desktop (WinKey+D), right-click "setup.cmd" (that you just saved there), and click "Run as administrator", then approve prompts.  
+## Easy Setup Script:  
+1) Click to open: https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/setup.cmd  
+2) Once open, choose "File > Save Page As" (or CTRL+S), and choose the Desktop as the save location.  
+3) From the Desktop (WinKey+D), right-click setup.cmd, and "Run as administrator", approve prompts.  
+Note: You may need to right-click setup.cmd, choose properties, tick the "unblock" checkbox, and OK.  
   
 ## GitHub: Example Usage  
 1) PS> Invoke-WebRequest -URI https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/New-SubredditHTMLArchive.ps1 -OutFile .\New-SubredditHTMLArchive.ps1  
