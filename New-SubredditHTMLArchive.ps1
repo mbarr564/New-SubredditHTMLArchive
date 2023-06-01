@@ -1,5 +1,5 @@
 ﻿<#PSScriptInfo
-.VERSION 2.2.1
+.VERSION 2.2.2
 .GUID 3ae5d1f9-f5be-4791-ab41-8a4c9e857e9c
 .AUTHOR mbarr@tutanota.com
 .PROJECTURI https://github.com/mbarr564/New-SubredditHTMLArchive
@@ -23,7 +23,7 @@
         1. Git: https://github.com/git-for-windows/git/releases/ (only when manually installing)
         2. Python (includes pip): https://www.python.org/downloads/windows/ (only when manually installing)
             i. At beginning of install, YOU MUST CHECK 'Add Python 3.x to PATH'. (So PowerShell can call python.exe and pip.exe from anywhere)
-    This script uses (and can install) the following Python modules, which are detected via pip (Package Installer for Python):
+    This script uses the following Python modules, which are detected via pip (Package Installer for Python):
         1. BDFR: https://pypi.org/project/bdfr/
         2. BDFR-HTML: https://github.com/BlipRanger/bdfr-html
             i. Dependency Python modules installed by BDFR-HTML: click, markdown, appdirs, bs4, dict2xml, ffmpeg-python, praw, pyyaml, requests, youtube-dl, jinja2, pillow (some of which install their own dependencies)
@@ -38,8 +38,9 @@
     Also generates a master index.html containing links to all of the other generated subreddit index.html files.
     All generated subreddit folders, files, and index pages, are automatically packaged into a ZIP file.
 .PARAMETER InstallPackages
-    The script will attempt to install ONLY MISSING pre-requisite packages: Python 3 and/or Git
-    When 'python.exe' or 'git.exe' are already in your $env:path, and executable from PowerShell, they will NOT be installed or modified.
+    The script will attempt to install only missing pre-requisite base packages: Python 3 and/or Git 2.
+    When 'python.exe' or 'git.exe' are already in your $env:path, and executable from PowerShell, they will not be installed.
+    The Python modules BDFR and BDFR-HTML (and their Python module prerequisites), will always be installed by this script, if they're missing, regardles of this switch.
 .PARAMETER Background
     The script will spawn the scheduled task with S4U logon type instead of Interactive logon type. Requires approval of an admin UAC prompt to spawn the task.
     This switch allows the script to keep running in the background, regardless of the user's logon state (such as lock screens, when running overnight).
@@ -47,15 +48,15 @@
     The script will not purge media files over 5MB, which is helpful if you want your zipped HTML archive to include full video files (instead of only in the JSON folder).
     Note that this parameter will increase the final ZIP archive size by orders of magnitude, or often from hundreds of megabytes, to tens of gigabytes, for certain subreddits.
 .EXAMPLE
-    PS> .\New-SubredditHTMLArchive.ps1 -Subreddit PowerShell
-.EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddit TestSubredditC -InstallPackages
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits (Get-Content "$($env:USERPROFILE)\Desktop\subreddit_list.txt") -Background -NoMediaPurge
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddits 'PowerShell','Python','AmateurRadio','HackRF','GNURadio','OpenV2K','SignalIdentification','DataHoarder' -Background
+.EXAMPLE
+    PS> .\New-SubredditHTMLArchive.ps1 -Subreddit PowerShell
 .NOTES
-    Last update: Wednesday, May 24, 2023 4:41:45 PM
+    Last update: Thursday, June 1, 2023 1:22:22 PM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,200)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background, [switch]$NoMediaPurge)
@@ -382,23 +383,30 @@ foreach ($Sub in $Subreddits)
         if (-not($logLastLine -like "*INFO] - Program complete"))
         {
             ## Check log for recurring problem submission IDs (and --exclude-id param them on retries) (gci "$rootFolder\logs" | ? {$_.Name -like "bdfr*.log.txt"} | % {gc -Path $_.FullName -tail 1} | % {if ($_ -match "^OSError.*_(?<ID>[a-z0-9]{5,6})\.json'$"){$matches.ID}})
-            if ($logLastLine -match "^OSError.*Invalid argument.*_(?<ID>[a-z0-9]{5,6})\.json'$"){$errorSubmissionIDs += $matches.ID}; $matches = $null #intended to match a newline/illegal character filesystem issue.. generates a $matches automatic variable with named group 'ID' for the submission ID
-            if ($logLastLine -match "^praw\.exceptions\.InvalidURL\: Invalid URL\: (?<ID>[a-z0-9]{5,6})$"){$prawError = $true}; $matches = $null #if there's a praw error that spits the submission ID as the URL, make a best effort partial clone below
+            if ($logLastLine -match "OSError.*Invalid argument.*_(?<ID>[a-z0-9]{5,8})\.json"){$errorSubmissionIDs += $matches.ID}; $matches = $null #intended to match a newline/illegal character filesystem issue.. generates a $matches automatic variable with named group 'ID' for the submission ID
+            if ($logLastLine -match "praw\.exceptions\.InvalidURL\:.Invalid URL\: (?<ID>[a-z0-9]{5,8})"){$prawError = $true}; $matches = $null #if there's a praw error that spits the submission ID as the URL, make a best effort partial clone below
+            if ($logLastLine -match "OSError.*WinError.123.*syntax.is.incorrect.*_(?<ID>[a-z0-9]{5,8})\.txt"){$errorSubmissionIDs += $matches.ID}; $matches = $null #added in 2.2.2 for: OSError: [WinError 123] The filename, directory name, or volume label syntax is incorrect: (examples: gui1i in AtheistHavens, tbf7q in GNURadio)
+            if ($logLastLine -match "FileNotFoundError.*WinError.3.*cannot find the path.*_(?<ID>[a-z0-9]{5,8})\.txt"){$errorSubmissionIDs += $matches.ID}; $matches = $null #added in 2.2.2 for: FileNotFoundError: [WinError 3] The system cannot find the path specified: (examples: 4tb11d in AtheistHavens, without LongPathsEnabled)
             [string[]]$excludeIDs = @(($errorSubmissionIDs | Group-Object | Where-Object {$_.Count -ge 2}).Name) #if the same submission ID has generated two errors, exclude the ID from the next BDFR clone attempt
 
-            ## Check if excluded IDs are still generating errors, and try an inclusion list instead (for --include-id-file param)
+            ## Check if IDs are still generating errors
             if (-not($prawError))
             {
-                [string[]]$stillFailingExcludeIDs = @(($errorSubmissionIDs | Group-Object | Where-Object {$_.Count -ge 3}).Name) #on three or more errors (once post --exclude-id addition), instead include all successful submission IDs, before the error ID
-                if ($stillFailingExcludeIDs)
+                [string[]]$badPostIDs = @(($errorSubmissionIDs | Group-Object | Where-Object {$_.Count -ge 4}).Name) #on four or more submission ID errors, instead make one final attempt for this subreddit
+                if ($badPostIDs){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] Encountered four errors on submission ID: $($badPostIDs -join ', '). Restarting once more for partial clone ..." -ForegroundColor Yellow}
+                else
                 {
-                    [string[]]$includeIDs = @() #workaround for archiver still attempting to clone --exclude-id post IDs (https://github.com/aliparlakci/bulk-downloader-for-reddit/issues/618)
-                    Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] Attempting clone with include ID list as excluded ID(s) still failing: $($stillFailingExcludeIDs -join ', ')" -ForegroundColor Yellow
-                    [string]$includeIDsFilePath = "$rootFolder\logs\bdfr_$($Sub)_includedSubmissionIDs_$(Get-Date -f yyyyMMdd_HHmmss).txt"
-                    Get-Content $logPath -ErrorAction SilentlyContinue | Where-Object {$_ -match "(archiver - INFO] - Record for entry item )(?<ID>[a-z0-9]{5,6})( written to disk)"} | ForEach-Object {$includeIDs += $matches.ID}
-                    if ($includeIDs){$includeIDs | Set-Content $includeIDsFilePath}; $matches = $null
+                    [string[]]$stillFailingExcludeIDs = @(($errorSubmissionIDs | Group-Object | Where-Object {$_.Count -ge 3}).Name) #on three or more errors (once post --exclude-id addition), instead include all successful submission IDs, before the error ID
+                    if ($stillFailingExcludeIDs)
+                    {
+                        [string[]]$includeIDs = @() #workaround for archiver still attempting to clone --exclude-id post IDs (https://github.com/aliparlakci/bulk-downloader-for-reddit/issues/618)
+                        Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] Attempting clone with include ID list as excluded ID(s) still failing: $($stillFailingExcludeIDs -join ', ')" -ForegroundColor Yellow
+                        [string]$includeIDsFilePath = "$rootFolder\logs\bdfr_$($Sub)_includedSubmissionIDs_$(Get-Date -f yyyyMMdd_HHmmss).txt"
+                        Get-Content $logPath -ErrorAction SilentlyContinue | Where-Object {$_ -match "(archiver - INFO] - Record for entry item )(?<ID>[a-z0-9]{5,6})( written to disk)"} | ForEach-Object {$includeIDs += $matches.ID}
+                        if ($includeIDs){$includeIDs | Set-Content $includeIDsFilePath}; $matches = $null
+                    }
+                    elseif ($excludeIDs){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] Excluding failing submission ID(s) from retry: $($excludeIDs -join ', ') ..." -ForegroundColor Yellow}
                 }
-                elseif ($excludeIDs){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] Excluding failing submission ID(s) from retry: $($excludeIDs -join ', ') ..." -ForegroundColor Yellow}
             }
             else {Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] Encountered PRAW Invalid URL exception. Restarting once more for partial clone ..." -ForegroundColor Yellow}
 
@@ -412,6 +420,7 @@ foreach ($Sub in $Subreddits)
             [int]$sleepMinutes = $totalCloneRetries - ($totalCloneSuccess * 5) #sleep one minute for every retry/error/cancel, but remove five minutes for each success (and negative values act as credits toward future strings of errors)
             if ($sleepMinutes -ge 1){Write-Host "[$(Get-Date -f HH:mm:ss.fff)][$Sub][Retry] Sleeping $sleepMinutes minute(s) before trying again ..." -ForegroundColor Yellow; Start-Sleep -Seconds ($sleepMinutes * 60)}
             if ($prawError){Clone-Subreddit; break} #make a best effort partial clone attempt with no inclusions/exclusions because they're generating praw errors (https://github.com/aliparlakci/bulk-downloader-for-reddit/issues/620)
+            elseif ($badPostIDs){Clone-Subreddit; break} #added in 2.2.2: another last attempt case, as a particular post is generting repeating errors
             elseif ($includeIDs){Clone-Subreddit -IncludeIDsFilePath $includeIDsFilePath}
             elseif ($excludeIDs){Clone-Subreddit -ExcludeIDs $excludeIDs}
             else {Clone-Subreddit}

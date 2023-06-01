@@ -15,11 +15,12 @@ PS> ($env:path).Split(';') | % {if (Test-Path "$\_\New-SubredditHTMLArchive.ps1"
   
 The finished HTML archives and ZIP path are in the task description, and the end of the transcript.  
   
-## Easy Setup Script: 
+## Easy Setup Script  
 1) Click to open: https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/setup.cmd  
 2) Once open, choose "File > Save Page As" (or CTRL+S), and choose the Desktop as the save location.  
-3) From the Desktop (WinKey+D), right-click setup.cmd, and "Run as administrator", approve prompts.  
-Note: You may need to right-click setup.cmd, choose properties, tick the "unblock" checkbox, and OK.  
+3) From the Desktop (WinKey+D), right-click setup.cmd, click properties, tick "unblock" box, and OK.  
+4) Then right-click setup.cmd again, and this time click "Run as administrator", and approve prompts.  
+Note: There's no message upon script completion, but re-running should now display usage examples.  
   
 ## GitHub: Example Usage  
 1) PS> Invoke-WebRequest -URI https://raw.githubusercontent.com/mbarr564/New-SubredditHTMLArchive/main/New-SubredditHTMLArchive.ps1 -OutFile .\New-SubredditHTMLArchive.ps1  
@@ -73,10 +74,12 @@ If run with the -Background switch parameter, you will instead see the path to t
 - Update 2.1.3: fixed to allow renamed/rescheduled monthly tasks to function as intended.
 - Update 2.1.4: subreddits with large media downloads (in JSON folder) excluded from retries.
 
-## Release 2.2.1 (May 2023)
-- Added setup.cmd batch file, for further simplified first time setup and usage.
+## Release 2.2.2 (May 2023)
+- Added setup.cmd batch file, for further simplified first time setup, with usage examples.
 - Changed archived media size, to under 5MB, from under 2MB. Added -NoMediaPurge param.
 - Removed GitHub CLI prereq completely. Script now uses only git.exe to clone repos.
 - Tested with latest stable releases of BDFR (2.6.2), Python (3.11), and Git (2.40.1).
 - New tools folder for prereq autoinstall location. Fixed winget install params.
 - Added registry LongPathsEnabled as MAX_PATH solution, in setup.cmd batch file.
+- Added more log checks for errors, with auto workarounds, for problem submission IDs.
+- Updated setup.cmd batch file, to check for all possible execution policy states.
