@@ -1,7 +1,8 @@
 ﻿<#PSScriptInfo
-.VERSION 2.2.2
+.VERSION 2.3.0
 .GUID 3ae5d1f9-f5be-4791-ab41-8a4c9e857e9c
 .AUTHOR mbarr@tutanota.com
+.TAGS Windows
 .PROJECTURI https://github.com/mbarr564/New-SubredditHTMLArchive
 .DESCRIPTION Windows turnkey wrapper for BDFR and BDFR-HTML Python modules. Installs modules, and prerequisites, then creates offline/portable HTML archives of subreddit posts and comments.
 #>
@@ -16,7 +17,7 @@
 .DESCRIPTION
     If you run this script regularly, PAY FOR REDDIT PREMIUM, to offset their public API development and traffic costs: https://www.reddit.com/premium
     You can skip the rest of this section, if you already have Python 3 and Git 2 installed, and you don't care which prerequisite Python modules are installed automatically.
-    This script does NOT require administrator privileges to run, or to install the Python modules, without the -InstallPackages parameter, which is usually only used once.
+    This script does NOT require administrator privileges to run, or to install the Python modules, without the -InstallPackages parameter, which is usually only used once (or only by the setup batch file).
     However, when OVERWRITING existing scheduled tasks (as this script will do, when rerun), you must approve an administrator UAC prompt, because you're deleting and recreating the 'RunOnce' task.
     On first run, without the prerequisites installed, you must include the -InstallPackages parameter, or manually install the below software packages, before running this script.
     When installing these packages automatically, the user must confirm a UAC admin prompt for each package, allowing the installer to make changes to their computer.
@@ -34,13 +35,14 @@
 .PARAMETER Subreddit
     The name of a single subreddit that will be archived.
 .PARAMETER Subreddits
-    An array/list of subreddit names that will be archived.
+    An array/list of subreddit names that will be archived: Subreddit1, Subreddit2, Subreddit3
     Also generates a master index.html containing links to all of the other generated subreddit index.html files.
     All generated subreddit folders, files, and index pages, are automatically packaged into a ZIP file.
 .PARAMETER InstallPackages
     The script will attempt to install only missing pre-requisite base packages: Python 3 and/or Git 2.
     When 'python.exe' or 'git.exe' are already in your $env:path, and executable from PowerShell, they will not be installed.
     The Python modules BDFR and BDFR-HTML (and their Python module prerequisites), will always be installed by this script, if they're missing, regardles of this switch.
+    As of the 2.3 release, 31 Python modules are auto installed as prerequisite packages, to support the BDFR and BDFR-HTML Python modules: appdirs==1.4.4, bdfr==2.2.0, bdfrtohtml==1.4.1, beautifulsoup4==4.12.3, Brotli==1.1.0, bs4==0.0.2, certifi==2024.2.2, charset-normalizer==3.3.2, click==7.1.2, colorama==0.4.6, dict2xml==1.7.5, ffmpeg-python==0.2.0, future==1.0.0, idna==3.6, Jinja2==3.0.0, Markdown==3.3.4, MarkupSafe==2.1.5, mutagen==1.47.0, pillow==10.2.0, praw==7.7.1, prawcore==2.4.0, pycryptodomex==3.20.0, PyYAML==6.0.1, requests==2.31.0, soupsieve==2.5, update-checker==0.18.0, urllib3==2.2.1, websocket-client==1.7.0, websockets==12.0, youtube-dl==2021.12.17, yt-dlp==2023.12.30
 .PARAMETER Background
     The script will spawn the scheduled task with S4U logon type instead of Interactive logon type. Requires approval of an admin UAC prompt to spawn the task.
     This switch allows the script to keep running in the background, regardless of the user's logon state (such as lock screens, when running overnight).
@@ -56,24 +58,25 @@
 .EXAMPLE
     PS> .\New-SubredditHTMLArchive.ps1 -Subreddit PowerShell
 .NOTES
-    Last update: Thursday, June 1, 2023 1:22:22 PM
+    Last update: Sunday, March 10, 2024 1:44:55 AM
 #>
 
 param([string]$Subreddit, [ValidateCount(2,200)][string[]]$Subreddits, [switch]$InstallPackages, [switch]$Background, [switch]$NoMediaPurge)
 
 ## Init
-[string]$taskName = 'RunOnce' #slash characters in this string bad
+[string]$taskName = "RunOnce$(Get-Date -f yyyyMMddHHmmssfff)" #slash characters in this string bad #added 2.3: datestamp to remove need to overwrite existing tasks
 [string]$scriptName = ((Split-Path $PSCommandPath -Leaf) -replace ".ps1",'')
 [string]$rootFolder = "$($env:USERPROFILE)\Documents\$scriptName" #the leaf folder may not exist yet, but will be created.. parent folder must exist
 [string]$zipOutputPath = "$rootFolder\ZIP\$(Get-Date -f yyyy-MM-dd_HHmmss)"
-[string]$transcriptPath = "$rootFolder\logs\$($scriptName)_$($taskName)_transcript_-_$(Get-Date -f yyyy-MM-dd).txt"
-Get-ChildItem "$rootFolder\logs" | Where-Object {$_.Name -like "*.1"} | ForEach-Object {Remove-Item -LiteralPath "$($_.FullName)" -ErrorAction SilentlyContinue} #clean empty log files with extension .1
+[string]$transcriptPath = "$rootFolder\logs\$($scriptName)_$($taskName)_transcript_-_$(Get-Date -f yyyy-MM-dd).txt" #original transcript log for background batch archival
+[string]$initLogPath = "$rootFolder\logs\$($scriptName)_init_-_$(Get-Date -f yyyy-MM-dd).txt" #added 2.3, additional transcript that catches any initial setup errors
+if (Test-Path "$rootFolder\logs" -PathType Container -ErrorAction SilentlyContinue){Get-ChildItem "$rootFolder\logs" | Where-Object {$_.Name -like "*.1"} | ForEach-Object {Remove-Item -LiteralPath "$($_.FullName)" -ErrorAction SilentlyContinue}} #if logs folder exists, clean empty log files with extension .1
 if (([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){$isAdmin = '[ADMIN] '} else {$isAdmin = ''} #is this instance running as admin, string presence used as boolean
 
 ## Custom parameter validation
-if ($Background){$logonType = 'S4U'} else {$logonType = 'Interactive'} #default Interactive (for viewable console window), -Background for S4U (non-interactive task). Not supported: Password (not tested), InteractiveOrPassword (not tested), Group (no profile), ServiceAccount (no profile), None (no profile)
 if (-not(Test-Path (Split-Path $rootFolder -Parent) -PathType Container)){throw "Error: root output path doesn't exist or not a directory: $(Split-Path $rootFolder -Parent)"}
 foreach ($folderName in @('JSON','HTML','ZIP','logs','tools')){if (-not(Test-Path "$rootFolder\$folderName" -PathType Container)){New-Item -Path "$rootFolder\$folderName" -ItemType Directory -Force -ErrorAction Stop | Out-Null}}
+Start-Transcript -LiteralPath $initLogPath -Append -ErrorAction Stop | Out-Null #start after log folder creation #added 2.3: transcribe initial script console output, so if there are unexpected errors, they can be found in the logs folder: C:\Users\<yourUsername>\Documents\New-SubredditHTMLArchive\logs
 if ($InstallPackages -and $Background){throw 'Error: the -InstallPackages parameter cannot be used in conjunction with the -Background parameter! Use the -InstallPackages switch by itself first, then use the -Background switch on the next script run.'}
 if ($Subreddits)
 {
@@ -105,21 +108,26 @@ if (-not((Get-ScheduledTask | Where-Object {$_.TaskPath -eq "\$scriptName\"}).St
     if ($Background){$scriptArgs += ' -Background'}
     if ($NoMediaPurge){$scriptArgs += ' -NoMediaPurge'}
 
+    ## Elevate user rights level for initial setup / Limit user rights for archival usage / Parameter validation above prevents elevated plus background
+    if ($InstallPackages){$runLevel = 'Highest'} else {$runLevel = 'Limited'} #added 2.3, installation bugfix #https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/new-scheduledtaskprincipal
+    if ($Background){$logonType = 'S4U'} else {$logonType = 'Interactive'} #default Interactive (for viewable console window), -Background for S4U (non-interactive task). Not supported: Password (not tested), InteractiveOrPassword (not tested), Group (no profile), ServiceAccount (no profile), None (no profile)
+
     ## Build splatted scheduled task parameters
     $taskArguments = @{
         TaskName = $taskName
         TaskPath = $scriptName
-        Trigger = (New-ScheduledTaskTrigger -At ((Get-Date).AddSeconds(5)) -Once)
+        Trigger = (New-ScheduledTaskTrigger -At ((Get-Date).AddSeconds(10)) -Once)
         Action = (New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "$($PSCommandPath)$scriptArgs") #space before $scriptArgs included already in string build
         Settings = (New-ScheduledTaskSettingsSet -DisallowDemandStart -ExecutionTimeLimit (New-TimeSpan -Seconds 0)) #1) must be run with a new trigger datetime, instead of right-clicking the task and choosing run. 2) PT0S equiv for indefinite/disabled run time
-        Principal = (New-ScheduledTaskPrincipal -UserID "$($env:COMPUTERNAME)\$($env:USERNAME)" -LogonType $logonType -RunLevel Limited)
+        Principal = (New-ScheduledTaskPrincipal -UserID "$($env:COMPUTERNAME)\$($env:USERNAME)" -LogonType $logonType -RunLevel $runLevel)
         ErrorAction = 'Stop'
         Force = $true} #force overwrite of previous task with same name
     if ($Subreddits){$taskArguments.add('Description',"Subreddits: $($Subreddits -join ', ')    -=-    Background task transcript path: $rootFolder\logs\    -=-    Finished ZIP archive output path: $rootFolder\ZIP\")} #linebreaks not supported by the GUI for this field
+    if ($InstallPackages){$taskArguments.add('Description',"Initial setup package installation")} #added 2.3 for initial setup debugging assistance
 
     ## Register scheduled task, handle access errors, display log and zip paths
     if ($isAdmin){$foreColor = 'Yellow'} else {$foreColor = 'Cyan'}
-    Write-Host "$($isAdmin)Creating task 'Task Scheduler Library > $scriptName > $taskName' with $logonType logon type ..." -ForegroundColor $foreColor #https://stackoverflow.com/questions/13965997/powershell-set-a-scheduled-task-to-run-when-user-isnt-logged-in
+    Write-Host "$($isAdmin)Creating task 'Library > $scriptName > $taskName', $logonType logon, $runLevel run level ..." -ForegroundColor $foreColor #https://stackoverflow.com/questions/13965997/powershell-set-a-scheduled-task-to-run-when-user-isnt-logged-in
     try {Register-ScheduledTask @taskArguments | Out-Null} #can trigger UAC admin prompt, which will rerun script as admin to create the task, if task creation fails.. the created task will NOT run as admin
     catch [Microsoft.Management.Infrastructure.CimException]{if (-not($isAdmin)){Start-Process 'powershell.exe' -ArgumentList "$($PSCommandPath)$scriptArgs" -Verb RunAs -Wait} else {throw $error[0]}} #access denied.. rerun this script with same args, as admin (will also trigger if overwriting task with S4U LogonType)
     catch {throw $error[0]} #S4U type will trigger UAC admin prompt to create the task.. or.. user can create as Interactive, and manually change the 'Security options' to 'Run whether user is logged on or not', which does NOT trigger a UAC prompt.
@@ -134,7 +142,7 @@ else
     [string]$runningTaskName = ((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.State -eq 'Running')}).TaskName) #task name can be changed when rescheduled
     [datetime]$taskLastRunTime = (((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq "$runningTaskName")}) | Get-ScheduledTaskInfo).LastRunTime)
     [datetime]$taskTriggerTime = ((Get-ScheduledTask | Where-Object {($_.TaskPath -eq "\$scriptName\") -and ($_.TaskName -eq "$runningTaskName")}).Triggers.StartBoundary) #this won't work if user reruns task later, but will if they set a new trigger.. added because LastRunTime wasn't being reliable
-    if (($taskLastRunTime -lt ((Get-Date).AddSeconds(-45))) -or ($taskTriggerTime -lt ((Get-Date).AddSeconds(-5)))) #for reasons unknown, the spawned task's LastRunTime is about 30 seconds before the task was even created..
+    if (($taskLastRunTime -lt ((Get-Date).AddSeconds(-45))) -or ($taskTriggerTime -lt ((Get-Date).AddSeconds(-10)))) #for reasons unknown, the spawned task's LastRunTime is about 30 seconds before the task was even created..
     {
         Write-Warning "Detected running script task! Last run: $($taskLastRunTime). Triggered: $($taskTriggerTime). Exiting ..."
         Write-Warning "Task Scheduler > Task Scheduler Library > $scriptName > $runningTaskName"
@@ -146,8 +154,9 @@ else
     if (-not($Background))
     {
         ## Interactive console rename and resize attempt
-        Write-Host "Task running under interactive logon type, updating title and resizing console window ..." -ForegroundColor Cyan
-        Write-Output "`n`0`n`0`n`0`n"; if ($Subreddit){Write-Output "`0`n"} #skip lines (with new lines and nulls) so the progress banner doesn't cover interactive console output ..and skip one more for a single subreddit (because no completion time estimate)
+        if ($InstallPackages){$runLevel = 'Highest'} else {$runLevel = 'Limited'}
+        Write-Host "Task running under interactive logon type, at $runLevel run level ..." -ForegroundColor Cyan
+        Write-Output "`n`0`n`0`n`0`n`0`n"; if ($Subreddit){Write-Output "`0`n"} #skip lines (with new lines and nulls) so the progress banner doesn't cover interactive console output ..and skip one more for a single subreddit (because no completion time estimate)
         $host.UI.RawUI.WindowTitle = "Task Scheduler Library > $scriptName > $runningTaskName" #based on size 16 Consolas font (right-click powershell.exe window title > properties > Font tab)
     }
     else
@@ -175,8 +184,8 @@ if ($missingExes.count -gt 0)
         Write-Host "[$(Get-Date -f HH:mm:ss.fff)] Installing latest releases for: $($missingExes -join ', ') ..." -ForegroundColor Cyan
         switch ($missingExes)
         {
-            'python.exe' {try {winget install --id Python.Python.3.11 --location "$rootFolder\tools" --accept-source-agreements --accept-package-agreements} catch {winget install --id Python.Python.3.11 --location "$rootFolder\tools" --accept-source-agreements --accept-package-agreements}}
-            'git.exe' {try {winget install --id Git.Git --location "$rootFolder\tools" --accept-source-agreements --accept-package-agreements} catch {winget install --id Git.Git --location "$rootFolder\tools" --accept-source-agreements --accept-package-agreements}} #try catch for simple single retries
+            'python.exe' {try {winget install --id Python.Python.3.11 --location "$rootFolder\tools\python" --accept-source-agreements --accept-package-agreements} catch {winget install --id Python.Python.3.11 --location "$rootFolder\tools\python" --accept-source-agreements --accept-package-agreements}}
+            'git.exe' {try {winget install --id Git.Git --location "$rootFolder\tools\git" --accept-source-agreements --accept-package-agreements} catch {winget install --id Git.Git --location "$rootFolder\tools\git" --accept-source-agreements --accept-package-agreements}} #try catch for simple single retries
         }
 
         ## Refresh PowerShell process environment (reloading %PATH% environment variables), otherwise this PowerShell session won't see the newly installed binary paths
@@ -254,6 +263,7 @@ if (-not($bdfrhtmlInstalled))
         $bdfrhtmlScriptRetryProcess = Start-Process "python.exe" -ArgumentList "setup.py install" -WorkingDirectory "$rootFolder\tools\bdfr-html" -WindowStyle Hidden -RedirectStandardError "$rootFolder\logs\BDFRHTML_installScriptRetryErrors.txt" -RedirectStandardOutput "$rootFolder\logs\BDFRHTML_installScriptRetryStdOut.txt" -PassThru -Wait
         if ($bdfrhtmlScriptRetryProcess.ExitCode -ne 0){Start-Process "$rootFolder\logs"; throw "[$(Get-Date -f HH:mm:ss.fff)] Error while retrying BDFR-HTML module setup script. Command: 'python.exe $rootFolder\tools\bdfr-html\setup.py install' returned exit code '$($bdfrhtmlScriptRetryProcess.ExitCode)'! See opened logs folder."}
     }
+    
 }
 
 ## Recheck for Python modules BDFR and BDFR-HTML (if modules weren't present)

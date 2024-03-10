@@ -10,7 +10,9 @@ Both do the same thing, and you can copy/paste from this README into PowerShell.
 The suggested subreddit 'TestSubredditC' is a real subreddit name that takes just seconds to archive, and should be used as the default when installing packages on the first script run.  
 The script is then expected to be supplied with a list of subreddit names, usually along with the -Background parameter, so you can lock your screen while the script continues to run.  
   
-The Task Scheduler can be accessed by pressing the Windows key, typing the partial name 'Task S', then clicking 'Task Scheduler', or: press WinKey+R, type **taskschd.msc**, hit Enter. The new task can be renamed (via right-click > Export..., then Actions > Import Task...) and rescheduled to retrigger, archiving the same subreddits in the description monthly, etc. If the task name is unchanged, it will be overwritten when the script is run from the command line again, such as when you update the script. Note that if the running task is ended manually (right-click > End), you will need to manually kill the orphaned python process in Task Manager (CTRL+ALT+DEL), or simply reboot before retrying. For problems with the PS Gallery, remove local copies of the script:  
+The Task Scheduler can be accessed by pressing the Windows key, typing the partial name 'Task S', then clicking 'Task Scheduler', or: press WinKey+R, type **taskschd.msc**, hit Enter. The new task can be renamed (via right-click > Export..., then Actions > Import Task...) and rescheduled to retrigger, archiving the same subreddits in the description monthly, etc. If the task name is unchanged, it will be overwritten when the script is run from the command line again, such as when you update the script. Note that if the running task is ended manually (right-click > End), you will need to manually kill the orphaned python process in Task Manager (CTRL+ALT+DEL), or simply reboot before retrying.  
+For problems with the PS Gallery, try Uninstall-Script first, then try removing local copies of the script:  
+PS> Uninstall-Script New-SubredditHTMLArchive *(command needs an elevated/admin PowerShell window)*
 PS> ($env:path).Split(';') | % {if (Test-Path "$\_\New-SubredditHTMLArchive.ps1"){start "$\_"}}  
   
 The finished HTML archives and ZIP path are in the task description, and the end of the transcript.  
@@ -82,4 +84,14 @@ If run with the -Background switch parameter, you will instead see the path to t
 - New tools folder for prereq autoinstall location. Fixed winget install params.
 - Added registry LongPathsEnabled as MAX_PATH solution, in setup.cmd batch file.
 - Added more log checks for errors, with auto workarounds, for problem submission IDs.
-- Updated setup.cmd batch file, to check for all possible execution policy states.
+- Updated setup.cmd batch file, to check for all possible execution policy states.  
+  
+## Maintenance Release 2.3 (March 2024)
+- Fixed conflicting tools folder winget installation paths, leading to MSI 1603 exit codes.  
+- Fixed "unable to find the specified registry key" for execution policy, on fresh installs.
+- Fixed a console printed error when attempting to clean the does-not-exist-yet logs folder.
+- Modified task trigger times to 10 seconds, instead of 5 seconds, for slower machines.
+- Timestamped the RunOnce task name, to prevent overwriting of previously generated tasks.
+- Validated that despite API 403 forbidden errors, login walled sub clones have linked media.
+- Tested with BDFR-HTML (1.4.1) and Python (3.11.8); BDFR-HTML requires downlevel BDFR (2.2.0).
+- Future: BDFR auth wrappeer to clone private subreddits; PowerShell for Linux compatibility.

@@ -1,8 +1,8 @@
 @echo off
-title New-SubredditHTMLArchive 2.2.2 setup
+title New-SubredditHTMLArchive 2.3 setup
 echo This batch script completes all initial setup steps for the New-SubredditHTMLArchive
 echo PowerShell script, with a right click and then a 'Run as administrator' click.
-echo You will need to be present during install to approve multiple prompts.
+echo You do not need to be present during installation, which takes a few minutes.
 echo.
 
 REM ## Init / Check Admin
@@ -18,13 +18,16 @@ IF %isAdmin%==FALSE (
 
 REM ## Get-ExecutionPolicy
 echo Checking PowerShell Execution Policy ...
-FOR /f "skip=2 tokens=2*" %%a IN ('reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\PowerShell\1\ShellIds\Microsoft.PowerShell" /v ExecutionPolicy') DO @SET "localPolicy=%%b"
-IF %localPolicy%==Restricted ( @SET changePolicy=TRUE )
-IF %localPolicy%==AllSigned ( @SET changePolicy=TRUE )
-IF %localPolicy%==RemoteSigned ( @SET changePolicy=TRUE )
-IF %localPolicy%==Default ( @SET changePolicy=TRUE )
-IF %localPolicy%==Undefined ( @SET changePolicy=TRUE )
-IF "%localPolicy%"=="" ( @SET changePolicy=TRUE )
+reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\PowerShell\1\ShellIds\Microsoft.PowerShell" /v ExecutionPolicy 1>NUL 2>NUL
+IF NOT ERRORLEVEL 0 ( @SET changePolicy=TRUE ) ELSE (
+    FOR /f "skip=2 tokens=2*" %%a IN ('reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\PowerShell\1\ShellIds\Microsoft.PowerShell" /v ExecutionPolicy') DO @SET "localPolicy=%%b"
+    IF %localPolicy%==Restricted ( @SET changePolicy=TRUE )
+    IF %localPolicy%==AllSigned ( @SET changePolicy=TRUE )
+    IF %localPolicy%==RemoteSigned ( @SET changePolicy=TRUE )
+    IF %localPolicy%==Default ( @SET changePolicy=TRUE )
+    IF %localPolicy%==Undefined ( @SET changePolicy=TRUE )
+    IF "%localPolicy%"=="" ( @SET changePolicy=TRUE )
+)
 
 REM ## Set-ExecutionPolicy
 IF %changePolicy%==TRUE (
@@ -97,7 +100,7 @@ echo 4. Hit Enter to start the archive. ETA is one hour per subreddit, without r
 echo.
 echo TL;DR: WinKey+R, "powershell", ENTER, "New-Sub", TAB, SPACE, "-Su", TAB, SPACE, "mySubreddit", ENTER.
 echo.
-echo Example: PS^> New-SubredditHTMLArchive.ps1 -Subreddit AnySubredditName
+echo Example: PS^> New-SubredditHTMLArchive.ps1 -Subreddit AnyNonPrivateSubredditName
 echo Example: PS^> New-SubredditHTMLArchive.ps1 -Subreddit HugeVideoLinksSubreddit -Background -NoMediaPurge
 echo Example: PS^> New-SubredditHTMLArchive.ps1 -Subreddits PowerShell,Python,GNURadio,HomeLab -Background
 
